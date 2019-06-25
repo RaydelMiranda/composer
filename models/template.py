@@ -1,0 +1,210 @@
+import logging
+from collections import namedtuple
+from enum import Enum, unique
+from itertools import count
+from pathlib import Path
+
+import lxml
+import svgutils as svg
+
+logger = logging.getLogger(__file__)
+
+Position = namedtuple('Position', 'x, y, z')
+Size = namedtuple('Size', 'width, height')
+
+
+class NoBaseSvgError(Exception):
+    pass
+
+
+@unique
+class LayerType(Enum):
+    PRIMARY = 0
+    VASE = 1
+    SECONDARY = 2
+
+
+class Layer:
+    _type_counter = {
+        LayerType.PRIMARY: count(),
+        LayerType.SECONDARY: count(),
+        LayerType.VASE: count()
+    }
+
+    XML_REPR = (
+        """
+    <g
+        id="{layer_id}"
+    >   
+                
+        <image
+            y="{image_pos_y}"
+            x="{image_pos_x}"
+            id="{image_id}"
+            preserveAspectRatio="none"
+            height="{image_height}"
+            width="{image_width}" 
+        />
+        
+    </g>
+    """)
+
+    def __init__(self, pos: Position, size: Size, _type: LayerType, lock_aspect_ratio: bool = True):
+        """
+        :param pos: The x and y coordinates wrapped in a Position object.
+        :param size: The size of the layer wrapped in a Size object.
+        :param lock_aspect_ratio:  If true any change to width will affect height, and the other way around.
+        """
+
+        self.type = _type
+        self.pos = pos
+
+        self._size = size
+        self._lock_aspect_ratio = lock_aspect_ratio
+
+        self.__inner_id = next(Layer._type_counter[self.type])
+
+    @property
+    def width(self) -> int:
+        return self._size.width
+
+    @property
+    def height(self) -> int:
+        return self._size.height
+
+    @width.setter
+    def width(self, value: int):
+
+        if self._lock_aspect_ratio:
+            factor = value / self._size.width
+        else:
+            factor = 1.0
+
+        self._size.width = value
+        self._size.height = self._size.height * factor
+
+    @height.setter
+    def height(self, value: int):
+
+        if self._lock_aspect_ratio:
+            factor = value / self._size.height
+        else:
+            factor = 1.0
+
+        self._size.height = value
+        self._size.width = self._size.width * factor
+
+    @property
+    def xml(self) -> str:
+        return Layer.XML_REPR.format(
+            layer_id=f'layer-{self.type.name}-{self.__inner_id}',
+            # layer_label=f'{self.type}-{self.__inner_id}',
+            image_pos_x=f'{self.pos.x}',
+            image_pos_y=f'{self.pos.y}',
+            image_id=f'image-{self.type.name}-{self.__inner_id}',
+            image_height=f'{self._size.height}',
+            image_width=f'{self._size.width}'
+        )
+
+    def update(self, pos: Position=None, size: Size=None) -> "Layer":
+        if pos:
+            self.pos = pos
+        if size:
+            self._size = size
+
+        return self
+
+
+
+class Template:
+    """
+    A class representing an SVG templates. Holds info about layers positions and sizes,
+    as well as the background.
+    """
+
+    def __init__(self, output_dir=None):
+
+        self.__layers = []
+        self.__background = None
+
+        self.__output_dir = Path.cwd()
+
+        if output_dir is not None:
+            output_path = Path(output_dir)
+            if output_path.exists() and output_path.is_dir():
+                self.__output_dir = output_path
+
+        # Base svg on top of which we'll adding layers to create the
+        # final template. This svg start with the `set_background`
+        # method.
+        self.__base_svg = None
+
+        self.__layer_map_to_item = {}
+
+    def add_layer(self, pos: Position, size: Size, _type: LayerType) -> Layer:
+
+        if self.__base_svg is None:
+            raise NoBaseSvgError("You must set a background before being able to add any layer.")
+
+        layer = Layer(pos, size, _type)
+        self.__layers.append(layer)
+        return layer
+
+    def map_layer_with_item(self, layer: Layer, graphic_item):
+        self.__layer_map_to_item[graphic_item] = layer
+
+    def update_layer(self, item):
+        layer = self.__layer_map_to_item[item]
+        pos = Position(item.x(), item.y(), item.zValue())
+        size = Size(item.boundingRect().width(), item.boundingRect().height())
+        layer.update(pos, size)
+
+    def set_background(self, background_file_path: str, size: Size = None):
+
+        path = Path(background_file_path)
+
+        if size is None:
+            size = Size(1290, 1080)
+
+        if path.exists() and path.is_file():
+            self.__background = background_file_path
+
+        self.__base_svg = svg.compose.Figure(
+            size.width, size.height,
+            svg.compose.Image(size.width, size.height, background_file_path)
+        )
+
+    def render(self):
+        """ Write an svg file to the output dir."""
+
+        if self.__base_svg is None:
+            raise NoBaseSvgError("You must , at least, set a background before being able to render the svg.")
+
+        svg_xml = self.__base_svg.tostr()
+
+        for layer in self.__layers:
+            svg_xml = self.__inject_layer(svg_xml, layer)
+
+        # with open(self.__output_dir.joinpath("template.svg"), "wb") as output:
+        #     output.write(svg_xml)
+
+        try:
+            svg_figure = svg.transform.fromstring(svg_xml.decode())
+        except lxml.etree.XMLSysntaxError as err:
+            logger.exception(err)
+        else:
+            svg_figure.save(self.__output_dir.joinpath("template.svg"))
+
+    @staticmethod
+    def __inject_layer(svg_xml: bytes, layer: Layer) -> bytes:
+        """
+        :param svg_xml: The xml representation for the svg file.
+        :return:  The new svg_xml string after layer injection.
+        """
+
+        layer_injection = (
+            f'{layer.xml}'
+            f'</svg>'
+        )
+
+        return svg_xml.replace(b'</svg>', layer_injection.encode())
