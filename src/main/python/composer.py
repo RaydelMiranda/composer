@@ -1,8 +1,9 @@
 from gettext import gettext as _
 
 from PyQt5.QtCore import pyqtSlot, Qt
-from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit
+from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit, QErrorMessage
 
+from models.template import OutputDirError
 from ui.common import PRIMARY, SECONDARY, BACKGROUND, VASE
 from ui.composer_graphic_scene import ComposerGraphicScene
 from ui.imagecomposer import Ui_Imagecomposer
@@ -16,6 +17,8 @@ class Composer(QMainWindow):
         # initializing ui components.
         self.ui = Ui_Imagecomposer()
         self.ui.setupUi(self)
+
+        self.ui.output_path.editingFinished.connect(self.on_output_path_changed)
 
         self.__prepare_list_views()
         self.__prepare_graphic_view()
@@ -90,6 +93,18 @@ class Composer(QMainWindow):
     def on_output_select_button_clicked(self, *args, **kwargs):
         path = self.__collect_resource_path(self.ui.output_path, _("Select secondary product's images directory."))
         self.ui.preview_scene.set_output_dir(path)
+
+
+    @pyqtSlot()
+    def on_output_path_changed(self):
+        try:
+            self.ui.preview_scene.set_output_dir(self.ui.output_path.text())
+        except OutputDirError as err:
+            message = QErrorMessage(self)
+            message.showMessage(str(err))
+            self.ui.output_path.clear()
+
+
 
     @pyqtSlot()
     def on_generate_template_button_clicked(self):
