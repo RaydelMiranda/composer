@@ -61,8 +61,9 @@ class ComposerGraphicScene(QGraphicsScene):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Delete:
             items = self.selectedItems()
-            assert len(items) == 1
-            self.removeItem(items[0])
+            for item in items:
+                self.removeItem(item)
+        return super(ComposerGraphicScene, self).keyPressEvent(event)
 
     def process_dropped_data(self, item, text):
         """
