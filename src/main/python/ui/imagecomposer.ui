@@ -185,7 +185,7 @@
           </widget>
          </item>
          <item row="2" column="3">
-          <widget class="QPushButton" name="vases_path_select_button">
+          <widget class="QPushButton" name="presentations_path_select_button">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -204,7 +204,7 @@
           </widget>
          </item>
          <item row="2" column="1" colspan="2">
-          <widget class="QLineEdit" name="vases_path">
+          <widget class="QLineEdit" name="presentations_path">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -523,7 +523,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QListView" name="vases_view">
+           <widget class="QListView" name="presentations_view">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
               <horstretch>220</horstretch>
@@ -639,7 +639,7 @@
       <item>
        <widget class="QProgressBar" name="progressBar">
         <property name="value">
-         <number>24</number>
+         <number>0</number>
         </property>
        </widget>
       </item>
@@ -651,7 +651,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="pushButton">
+       <widget class="QPushButton" name="generate_button">
         <property name="text">
          <string>Generate</string>
         </property>

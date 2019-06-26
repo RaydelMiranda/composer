@@ -1,10 +1,11 @@
-from pathlib import Path
+from gettext import gettext as _
 
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QErrorMessage
 
+from models.errors import ReadOnlyError
 from models.template import Template, LayerType, Position, Size, NoBaseSvgError
-from ui.common import BACKGROUND, VASE, PRIMARY, SECONDARY
+from ui.common import BACKGROUND, PRESENTATION, PRIMARY, SECONDARY
 
 
 class CustomPixmapItem(QGraphicsPixmapItem):
@@ -29,6 +30,14 @@ class ComposerGraphicScene(QGraphicsScene):
         super(ComposerGraphicScene, self).__init__(parent, *args, **kwargs)
 
         self.__template = Template()
+
+    @property
+    def template(self):
+        return self.__template
+
+    @template.setter
+    def template(self, value):
+        raise ReadOnlyError(_("Template can't be set it directly."))
 
     def dragEnterEvent(self, ev):
         if ev.mimeData().hasImage():
@@ -83,7 +92,7 @@ class ComposerGraphicScene(QGraphicsScene):
         """
 
         layer_type_origin_map = {
-            VASE: LayerType.VASE,
+            PRESENTATION: LayerType.PRESENTATION,
             PRIMARY: LayerType.PRIMARY,
             SECONDARY: LayerType.SECONDARY
         }

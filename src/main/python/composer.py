@@ -1,10 +1,12 @@
 from gettext import gettext as _
+from pathlib import Path
 
-from PyQt5.QtCore import pyqtSlot, Qt, QSignalBlocker
+from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit, QErrorMessage
 
+from composer_core.composer.composition import CompositionBuilder
 from models.template import OutputDirError
-from ui.common import PRIMARY, SECONDARY, BACKGROUND, VASE
+from ui.common import PRIMARY, SECONDARY, BACKGROUND, PRESENTATION
 from ui.composer_graphic_scene import ComposerGraphicScene
 from ui.imagecomposer import Ui_Imagecomposer
 from ui.models import ResourceModel
@@ -40,19 +42,19 @@ class Composer(QMainWindow):
         self.ui.pproducts_view_model = ResourceModel(self, origin=PRIMARY)
         self.ui.sproducts_view_model = ResourceModel(self, origin=SECONDARY)
         self.ui.backgrounds_view_model = ResourceModel(self, origin=BACKGROUND)
-        self.ui.vases_view_model = ResourceModel(self, origin=VASE)
+        self.ui.presentations_view_model = ResourceModel(self, origin=PRESENTATION)
 
         # Bind models to views.
         self.ui.primary_products_view.setModel(self.ui.pproducts_view_model)
         self.ui.secondary_products_view.setModel(self.ui.sproducts_view_model)
         self.ui.backgrounds_view.setModel(self.ui.backgrounds_view_model)
-        self.ui.vases_view.setModel(self.ui.vases_view_model)
+        self.ui.presentations_view.setModel(self.ui.presentations_view_model)
 
         # Enable drag on views.
         self.ui.primary_products_view.setDragEnabled(True)
         self.ui.secondary_products_view.setDragEnabled(True)
         self.ui.backgrounds_view.setDragEnabled(True)
-        self.ui.vases_view.setDragEnabled(True)
+        self.ui.presentations_view.setDragEnabled(True)
 
     def __prepare_property_controls(self):
         self.ui.item_pos_x.valueChanged.connect(self.on_x_changed)
@@ -88,9 +90,9 @@ class Composer(QMainWindow):
         index = self.ui.sproducts_view_model.setRootPath(path)
 
     @pyqtSlot()
-    def on_vases_path_select_button_clicked(self, *args, **kwargs):
-        path = self.__collect_resource_path(self.ui.vases_path, _("Select vases's images directory."))
-        index = self.ui.vases_view_model.setRootPath(path)
+    def on_presentations_path_select_button_clicked(self, *args, **kwargs):
+        path = self.__collect_resource_path(self.ui.presentations_path, _("Select presentations's images directory."))
+        index = self.ui.presentations_view_model.setRootPath(path)
 
     @pyqtSlot()
     def on_output_select_button_clicked(self, *args, **kwargs):
@@ -199,6 +201,23 @@ class Composer(QMainWindow):
         old_state = self.ui.item_height.blockSignals(True)
         self.ui.item_height.setValue(original_height * factor)
         self.ui.item_height.blockSignals(old_state)
+
+    @pyqtSlot()
+    def on_generate_button_clicked(self, *args, **kwargs):
+        template = self.ui.preview_scene.template
+
+        primaries_paths = [Path(resource.path) for resource in self.ui.pproducts_view_model.resources]
+        secondaries_paths = [Path(resource.path) for resource in self.ui.sproducts_view_model.resources]
+        presentations_paths = [Path(resource.path) for resource in self.ui.presentations_view_model.resources]
+
+        composition_builder = CompositionBuilder(template,
+                                                 primaries_paths, secondaries_paths, presentations_paths)
+
+        compositions = composition_builder.compose()
+        for composition in compositions:
+            if composition.is_valid():
+                print(composition)
+                composition.render(Path("/tmp"))
 
 
 if __name__ == '__main__':

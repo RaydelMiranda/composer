@@ -6,6 +6,7 @@ from pathlib import Path
 
 import lxml
 import svgutils as svg
+from svgutils.transform import SVGFigure
 
 logger = logging.getLogger(__file__)
 
@@ -26,7 +27,7 @@ class OutputDirError(Exception):
 @unique
 class LayerType(Enum):
     PRIMARY = 0
-    VASE = 1
+    PRESENTATION = 1
     SECONDARY = 2
 
 
@@ -34,7 +35,7 @@ class Layer:
     _type_counter = {
         LayerType.PRIMARY: count(),
         LayerType.SECONDARY: count(),
-        LayerType.VASE: count()
+        LayerType.PRESENTATION: count()
     }
 
     XML_REPR = (
@@ -101,13 +102,20 @@ class Layer:
         self._size.width = self._size.width * factor
 
     @property
+    def layer_id(self):
+        return f'layer-{self.type.name}-{self.__inner_id}'
+
+    @property
+    def image_id(self):
+        return f'image-{self.type.name}-{self.__inner_id}'
+
+    @property
     def xml(self) -> str:
         return Layer.XML_REPR.format(
-            layer_id=f'layer-{self.type.name}-{self.__inner_id}',
-            # layer_label=f'{self.type}-{self.__inner_id}',
+            layer_id=self.layer_id,
             image_pos_x=f'{self.pos.x}',
             image_pos_y=f'{self.pos.y}',
-            image_id=f'image-{self.type.name}-{self.__inner_id}',
+            image_id=self.image_id,
             image_height=f'{self._size.height}',
             image_width=f'{self._size.width}'
         )
@@ -190,9 +198,7 @@ class Template:
             svg.compose.Image(size.width, size.height, background_file_path)
         )
 
-    def render(self):
-        """ Write an svg file to the output dir."""
-
+    def __build_svg_final_figure(self):
         if self.__base_svg is None:
             raise NoBaseSvgError(_("You must , at least, set a background before being able to render the svg."))
 
@@ -205,8 +211,22 @@ class Template:
             svg_figure = svg.transform.fromstring(svg_xml.decode())
         except lxml.etree.XMLSysntaxError as err:
             logger.exception(err)
+            return None
         else:
+            return svg_figure
+
+    def render(self):
+        """ Write an svg file to the output dir."""
+
+        svg_figure = self.__build_svg_final_figure()
+        if svg_figure is not None:
             svg_figure.save(self.__output_dir.joinpath("template.svg"))
+
+    def render_to_str(self):
+        """ Write an svg as string. """
+        svg_figure = self.__build_svg_final_figure()
+        if svg_figure is not None:
+            return svg_figure.to_str()
 
     @property
     def output_dir(self):
@@ -233,3 +253,12 @@ class Template:
         )
 
         return svg_xml.replace(b'</svg>', layer_injection.encode())
+
+    def get_primary_layer(self) -> Layer:
+        return next(layer for layer in self.__layers if layer.type == LayerType.PRIMARY)
+
+    def get_presentation_layer(self):
+        return next(layer for layer in self.__layers if layer.type == LayerType.PRESENTATION)
+
+    def get_secondary_layers(self) -> [Layer]:
+        return [layer for layer in self.__layers if layer.type == LayerType.SECONDARY]

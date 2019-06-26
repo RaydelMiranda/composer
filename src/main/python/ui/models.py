@@ -1,9 +1,13 @@
 from collections import namedtuple
+from gettext import gettext as _
 from pathlib import Path
 
 import magic
 from PyQt5.QtCore import Qt, QDirIterator, QAbstractListModel
 from PyQt5.QtGui import QPixmap
+
+from models.errors import ReadOnlyError
+from ui.common import IMAGE_TYPES
 
 Resource = namedtuple('Resource', 'path, image, thumbnail')
 
@@ -21,11 +25,19 @@ class ResourceModel(QAbstractListModel):
         super(ResourceModel, self).__init__(parent, *args, **kwargs)
 
         if _filter is None:
-            self.__filter = ['svg', 'png', 'jpg', 'jpeg']
+            self.__filter = IMAGE_TYPES
 
         self.__root_path = None
         self.__resources = []
         self.__origin = origin
+
+    @property
+    def resources(self):
+        return self.__resources
+
+    @resources.setter
+    def resources(self, value):
+        raise ReadOnlyError(_("Resources can't be edited directly."))
 
     def setRootPath(self, path: str):
 
