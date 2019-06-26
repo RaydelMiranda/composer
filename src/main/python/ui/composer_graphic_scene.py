@@ -1,4 +1,4 @@
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem
 
 from models.template import Template, LayerType, Position, Size
@@ -58,13 +58,19 @@ class ComposerGraphicScene(QGraphicsScene):
         self.__template.update_layer(item)
         self.item_moved.emit(value.x(), value.y())
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Delete:
+            items = self.selectedItems()
+            assert len(items) == 1
+            self.removeItem(items[0])
+
     def process_dropped_data(self, item, text):
         """
         Create the new layers according the given item, this layers are mapped then to the item
-        in order to update is necessary when rendering the whole svg.
+        in order to update if necessary when rendering the whole svg.
 
         :param item:  A QGraphicsItem.
-        :param origin: A string containing the origin of the dropped data (BACKGROUND, VASE, ...)
+        :param text: A string containing the <origin,path> of the dropped data.
         """
 
         layer_type_origin_map = {
