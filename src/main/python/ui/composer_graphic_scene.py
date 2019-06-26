@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem
 
@@ -96,3 +98,6 @@ class ComposerGraphicScene(QGraphicsScene):
 
     def render_template(self):
         self.__template.render()
+
+    def set_output_dir(self, path: str):
+        self.__template.output_dir = path

@@ -12,8 +12,14 @@ logger = logging.getLogger(__file__)
 Position = namedtuple('Position', 'x, y, z')
 Size = namedtuple('Size', 'width, height')
 
+from gettext import gettext as _
+
 
 class NoBaseSvgError(Exception):
+    pass
+
+
+class OutputDirError(Exception):
     pass
 
 
@@ -106,14 +112,13 @@ class Layer:
             image_width=f'{self._size.width}'
         )
 
-    def update(self, pos: Position=None, size: Size=None) -> "Layer":
+    def update(self, pos: Position = None, size: Size = None) -> "Layer":
         if pos:
             self.pos = pos
         if size:
             self._size = size
 
         return self
-
 
 
 class Template:
@@ -144,7 +149,7 @@ class Template:
     def add_layer(self, pos: Position, size: Size, _type: LayerType) -> Layer:
 
         if self.__base_svg is None:
-            raise NoBaseSvgError("You must set a background before being able to add any layer.")
+            raise NoBaseSvgError(_("You must set a background before being able to add any layer."))
 
         layer = Layer(pos, size, _type)
         self.__layers.append(layer)
@@ -152,6 +157,10 @@ class Template:
 
     def map_layer_with_item(self, layer: Layer, graphic_item):
         self.__layer_map_to_item[graphic_item] = layer
+
+    def remove_layer_for_item(self, item):
+        self.__layers.remove(self.__layer_map_to_item[item])
+        del self.__layer_map_to_item[item]
 
     def update_layer(self, item):
         layer = self.__layer_map_to_item[item]
@@ -178,15 +187,12 @@ class Template:
         """ Write an svg file to the output dir."""
 
         if self.__base_svg is None:
-            raise NoBaseSvgError("You must , at least, set a background before being able to render the svg.")
+            raise NoBaseSvgError(_("You must , at least, set a background before being able to render the svg."))
 
         svg_xml = self.__base_svg.tostr()
 
         for layer in self.__layers:
             svg_xml = self.__inject_layer(svg_xml, layer)
-
-        # with open(self.__output_dir.joinpath("template.svg"), "wb") as output:
-        #     output.write(svg_xml)
 
         try:
             svg_figure = svg.transform.fromstring(svg_xml.decode())
@@ -194,6 +200,18 @@ class Template:
             logger.exception(err)
         else:
             svg_figure.save(self.__output_dir.joinpath("template.svg"))
+
+    @property
+    def output_dir(self):
+        return self.__output_dir
+
+    @output_dir.setter
+    def output_dir(self, path):
+        p = Path(path)
+        if p.is_dir() and p.exists():
+            self.__output_dir = p
+        else:
+            raise OutputDirError(_("Output dir must be an existing directory."))
 
     @staticmethod
     def __inject_layer(svg_xml: bytes, layer: Layer) -> bytes:

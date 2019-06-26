@@ -88,7 +88,8 @@ class Composer(QMainWindow):
 
     @pyqtSlot()
     def on_output_select_button_clicked(self, *args, **kwargs):
-        self.__collect_resource_path(self.ui.output_path, _("Select secondary product's images directory."))
+        path = self.__collect_resource_path(self.ui.output_path, _("Select secondary product's images directory."))
+        self.ui.preview_scene.set_output_dir(path)
 
     @pyqtSlot()
     def on_generate_template_button_clicked(self):
