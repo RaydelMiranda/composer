@@ -1,9 +1,9 @@
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QErrorMessage
 
-from models.template import Template, LayerType, Position, Size
+from models.template import Template, LayerType, Position, Size, NoBaseSvgError
 from ui.common import BACKGROUND, VASE, PRIMARY, SECONDARY
 
 
@@ -93,8 +93,14 @@ class ComposerGraphicScene(QGraphicsScene):
         if origin == BACKGROUND:
             self.__template.set_background(path, size=size)
         else:
-            layer = self.__template.add_layer(pos=pos, size=size, _type=layer_type_origin_map[origin])
-            self.__template.map_layer_with_item(layer, graphic_item=item)
+            try:
+                layer = self.__template.add_layer(pos=pos, size=size, _type=layer_type_origin_map[origin])
+            except NoBaseSvgError as err:
+                self.removeItem(item)
+                error_dialog = QErrorMessage(self.parent())
+                error_dialog.showMessage(str(err))
+            else:
+                self.__template.map_layer_with_item(layer, graphic_item=item)
 
     def render_template(self):
         self.__template.render()
