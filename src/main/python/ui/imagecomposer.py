@@ -394,7 +394,7 @@ class Ui_Imagecomposer(object):
         self.label_11.setText(_translate("Imagecomposer", "Pos Z:"))
         self.label_5.setText(_translate("Imagecomposer", "Main products"))
         self.label_6.setText(_translate("Imagecomposer", "Secondary products"))
-        self.label_16.setText(_translate("Imagecomposer", "Vases"))
+        self.label_16.setText(_translate("Imagecomposer", "Presentation options"))
         self.label_7.setText(_translate("Imagecomposer", "Backgrounds"))
         self.label_8.setText(_translate("Imagecomposer", "Preview"))
         self.pushButton_2.setText(_translate("Imagecomposer", "Cancel"))
