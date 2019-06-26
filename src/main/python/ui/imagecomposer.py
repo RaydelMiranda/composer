@@ -375,11 +375,11 @@ class Ui_Imagecomposer(object):
         _translate = QtCore.QCoreApplication.translate
         Imagecomposer.setWindowTitle(_translate("Imagecomposer", "Imagecomposer"))
         self.groupBox.setTitle(_translate("Imagecomposer", "Resources"))
-        self.label.setText(_translate("Imagecomposer", "Main prodcuts:"))
+        self.label.setText(_translate("Imagecomposer", "Main products:"))
         self.mproducts_path_select_button.setText(_translate("Imagecomposer", "..."))
         self.label_2.setText(_translate("Imagecomposer", "Secondary products:"))
         self.sproducts_path_select_button.setText(_translate("Imagecomposer", "..."))
-        self.label_15.setText(_translate("Imagecomposer", "Vases:"))
+        self.label_15.setText(_translate("Imagecomposer", "Presentations options:"))
         self.label_3.setText(_translate("Imagecomposer", "Backgrounds:"))
         self.backgrounds_path_select_button.setText(_translate("Imagecomposer", "..."))
         self.label_4.setText(_translate("Imagecomposer", "Output:"))

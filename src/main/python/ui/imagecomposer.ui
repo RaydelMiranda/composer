@@ -32,7 +32,7 @@
             </sizepolicy>
            </property>
            <property name="text">
-            <string>Main prodcuts:</string>
+            <string>Main products:</string>
            </property>
           </widget>
          </item>
@@ -96,7 +96,7 @@
             </sizepolicy>
            </property>
            <property name="text">
-            <string>Vases:</string>
+            <string>Presentations options:</string>
            </property>
           </widget>
          </item>
@@ -518,7 +518,7 @@
           <item>
            <widget class="QLabel" name="label_16">
             <property name="text">
-             <string>Vases</string>
+             <string>Presentation options</string>
             </property>
            </widget>
           </item>
