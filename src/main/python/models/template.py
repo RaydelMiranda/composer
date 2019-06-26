@@ -164,8 +164,15 @@ class Template:
 
     def update_layer(self, item):
         layer = self.__layer_map_to_item[item]
+        scale_factor = item.scale()
+
         pos = Position(item.x(), item.y(), item.zValue())
-        size = Size(item.boundingRect().width(), item.boundingRect().height())
+
+        size = Size(
+            item.boundingRect().width() * scale_factor,
+            item.boundingRect().height() * scale_factor
+        )
+
         layer.update(pos, size)
 
     def set_background(self, background_file_path: str, size: Size = None):

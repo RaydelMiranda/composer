@@ -16,6 +16,9 @@ class CustomPixmapItem(QGraphicsPixmapItem):
         scene = self.scene()
         if scene and QGraphicsPixmapItem.ItemPositionHasChanged == change:
             scene.on_item_position_change(self, change, value)
+        if scene and QGraphicsPixmapItem.ItemScaleHasChanged == change:
+            scene.on_item_scale_changed(self, change, value)
+
         return super(CustomPixmapItem, self).itemChange(change, value)
 
 
@@ -59,6 +62,9 @@ class ComposerGraphicScene(QGraphicsScene):
     def on_item_position_change(self, item, change, value):
         self.__template.update_layer(item)
         self.item_moved.emit(value.x(), value.y())
+
+    def on_item_scale_changed(self, item, change, value):
+        self.__template.update_layer(item)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Delete:

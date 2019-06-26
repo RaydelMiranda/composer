@@ -1,6 +1,6 @@
 from gettext import gettext as _
 
-from PyQt5.QtCore import pyqtSlot, Qt
+from PyQt5.QtCore import pyqtSlot, Qt, QSignalBlocker
 from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit, QErrorMessage
 
 from models.template import OutputDirError
@@ -63,6 +63,9 @@ class Composer(QMainWindow):
 
     def __selected_item(self):
         items = self.ui.preview_scene.selectedItems()
+        if len(items) == 0:
+            return None
+
         assert len(items) == 1
         return items[0]
 
@@ -94,7 +97,6 @@ class Composer(QMainWindow):
         path = self.__collect_resource_path(self.ui.output_path, _("Select secondary product's images directory."))
         self.ui.preview_scene.set_output_dir(path)
 
-
     @pyqtSlot()
     def on_output_path_changed(self):
         try:
@@ -103,8 +105,6 @@ class Composer(QMainWindow):
             message = QErrorMessage(self)
             message.showMessage(str(err))
             self.ui.output_path.clear()
-
-
 
     @pyqtSlot()
     def on_generate_template_button_clicked(self):
@@ -124,6 +124,11 @@ class Composer(QMainWindow):
         if selection:
             # TODO: Use flag for enable selection for just one item at the time.
             item = selection[0]
+
+            # The item can be scaled to a new size in the process, use that
+            # to keep things as the user wants it.
+            scale_factor = item.scale()
+
             # Enable property controls.
             self.ui.item_properties.setEnabled(True)
             self.ui.item_pos_x.setEnabled(True)
@@ -136,8 +141,8 @@ class Composer(QMainWindow):
             # Populate property controls.
             self.ui.item_pos_x.setValue(pos.x())
             self.ui.item_pos_y.setValue(pos.y())
-            self.ui.item_height.setValue(rect.height())
-            self.ui.item_width.setValue(rect.width())
+            self.ui.item_height.setValue(rect.height() * scale_factor)
+            self.ui.item_width.setValue(rect.width() * scale_factor)
         else:
             self.ui.item_properties.setEnabled(False)
             self.ui.item_pos_x.setValue(0)
@@ -158,30 +163,42 @@ class Composer(QMainWindow):
         item.setY(value)
 
     def on_height_changed(self, height):
-        # item = self.__selected_item()
-        #
-        # rect = item.boundingRect()
-        #
-        # original_height = rect.height()
-        # factor = float(height / original_height)
-        #
-        # item.prepareGeometryChange()
-        # item.setScale(factor)
-        #
-        # pixmap = item.pixmap()
-        #
-        # new_p = pixmap.scaled(
-        #     rect.width() * factor,
-        #     rect.height() * factor,
-        #     Qt.KeepAspectRatio, Qt.SmoothTransformation
-        # )
-        #
-        # item.setPixmap(new_p)
-        # item.update()
-        pass
+        item = self.__selected_item()
+
+        rect = item.boundingRect()
+
+        original_height = rect.height()
+        original_width = rect.width()
+
+        factor = float(height / original_height)
+
+        item.prepareGeometryChange()
+        item.setScale(factor)
+        item.update()
+
+        # Update width control.
+        old_state = self.ui.item_width.blockSignals(True)
+        self.ui.item_width.setValue(original_width * factor)
+        self.ui.item_width.blockSignals(old_state)
 
     def on_width_changed(self, width):
-        pass
+        item = self.__selected_item()
+
+        rect = item.boundingRect()
+
+        original_width = rect.width()
+        original_height = rect.height()
+
+        factor = float(width / original_width)
+
+        item.prepareGeometryChange()
+        item.setScale(factor)
+        item.update()
+
+        # Update height control.
+        old_state = self.ui.item_height.blockSignals(True)
+        self.ui.item_height.setValue(original_height * factor)
+        self.ui.item_height.blockSignals(old_state)
 
 
 if __name__ == '__main__':
