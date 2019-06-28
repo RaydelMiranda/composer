@@ -26,12 +26,6 @@ class Composer(QMainWindow):
         self.__prepare_graphic_view()
         self.__prepare_property_controls()
 
-        self.ui.pproducts_view_model.setRootPath("/home/miranda/.projects/qpy_image_composer/test_data/CLIPPING-FLOWER")
-        self.ui.sproducts_view_model.setRootPath("/home/miranda/.projects/qpy_image_composer/test_data/BUNDLES-IMAGES")
-        self.ui.backgrounds_view_model.setRootPath(
-            "/home/miranda/.projects/qpy_image_composer/test_data/2019/backgrounds")
-        self.ui.presentations_view_model.setRootPath(
-            "/home/miranda/.projects/qpy_image_composer/test_data/2019/presentation")
 
     def __prepare_graphic_view(self):
         self.ui.preview_scene = ComposerGraphicScene(self.ui.preview)
