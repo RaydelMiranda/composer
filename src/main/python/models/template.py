@@ -170,7 +170,11 @@ class Template:
         del self.__layer_map_to_item[item]
 
     def update_layer(self, item):
-        layer = self.__layer_map_to_item[item]
+        layer = self.__layer_map_to_item.get(item)
+
+        if layer is None:
+            return
+
         scale_factor = item.scale()
 
         pos = Position(item.x(), item.y(), item.zValue())

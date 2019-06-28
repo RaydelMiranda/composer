@@ -159,14 +159,24 @@ class Composer(QMainWindow):
 
     def on_x_changed(self, value):
         item = self.__selected_item()
+        if item is None:
+            # No item selected
+            return
         item.setX(value)
 
     def on_y_changed(self, value):
         item = self.__selected_item()
+        if item is None:
+            # No item selected
+            return
         item.setY(value)
 
     def on_height_changed(self, height):
         item = self.__selected_item()
+
+        if item is None:
+            # No item selected.
+            return
 
         rect = item.boundingRect()
 
@@ -186,6 +196,10 @@ class Composer(QMainWindow):
 
     def on_width_changed(self, width):
         item = self.__selected_item()
+
+        if item is None:
+            # No item selected.
+            return
 
         rect = item.boundingRect()
 

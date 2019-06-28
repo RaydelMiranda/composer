@@ -30,6 +30,7 @@ class ComposerGraphicScene(QGraphicsScene):
         super(ComposerGraphicScene, self).__init__(parent, *args, **kwargs)
 
         self.__template = Template()
+        self.__background_item = None
 
     @property
     def template(self):
@@ -47,21 +48,37 @@ class ComposerGraphicScene(QGraphicsScene):
 
         item = None
         text = None
+        origin = None
+
+        if ev.mimeData().hasText():
+            text = ev.mimeData().text()
+
+            origin, _ = text.split(',')
 
         if ev.mimeData().hasImage():
             pixmap = ev.mimeData().imageData()
 
-            item = CustomPixmapItem(pixmap)
+            # If origin != BACKGROUND, we scale item to fit.
+            parent = self.__background_item if origin != BACKGROUND else None
+            item = CustomPixmapItem(pixmap, parent=parent)
+
             item.setFlags(QGraphicsPixmapItem.ItemIsMovable |
                           QGraphicsPixmapItem.ItemIsSelectable |
                           QGraphicsPixmapItem.ItemSendsGeometryChanges)
+
             item.setPos(ev.pos())
 
             self.addItem(item)
-            self.parent().fitInView(self.sceneRect(), Qt.KeepAspectRatio)
 
-        if ev.mimeData().hasText():
-            text = ev.mimeData().text()
+            # if origin != BACKGROUND:
+            #     # Scale to fit the scene.
+            #     scene_rect = self.sceneRect()
+            #     scene_width = scene_rect.width()
+            #     item_width = item.boundingRect().width()
+            #     factor = 0.5 * item_width / scene_width
+            #     item.setScale(factor)
+
+            self.parent().fitInView(self.sceneRect(), Qt.KeepAspectRatio)
 
         self.process_dropped_data(item, text)
 
@@ -72,7 +89,7 @@ class ComposerGraphicScene(QGraphicsScene):
         self.__template.update_layer(item)
         self.item_moved.emit(value.x(), value.y())
 
-    def on_item_scale_changed(self, item, change, value):
+    def on_item_scale_changed(self, item: CustomPixmapItem, change, value):
         self.__template.update_layer(item)
 
     def keyPressEvent(self, event):
