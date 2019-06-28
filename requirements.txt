@@ -59,6 +59,7 @@ testpath==0.4.2
 tornado==6.0.3
 traitlets==4.3.2
 -e git+git@bitbucket.org:elasbit/vf_image_composition.git@9fcd02301fc002575b24aea4ed6eea13a26a8c54#egg=vf_product_creator
+Wand==0.5.4
 wcwidth==0.1.7
 webencodings==0.5.1
 Werkzeug==0.14.1
