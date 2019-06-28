@@ -1,11 +1,31 @@
 import itertools
+import logging
+import re
 from collections import defaultdict
+from ctypes import c_void_p, c_wchar_p
+from gettext import gettext as _
 from pathlib import Path
-from typing import Generator
+from typing import Generator, Callable
+
+from colorama import Fore, Style
+from wand.api import library
 
 from composer_core.composer.common import CompositionItem
 from composer_core.composer.compose import compose
-from models.template import Template
+from models.template import Template, LayerType
+
+logger = logging.Logger(__name__)
+
+# -----------------------------------------------------------------------------
+# Some wand settings.
+# -----------------------------------------------------------------------------
+library.MagickSetOption.argtypes = [c_void_p,
+                                    c_wchar_p,
+                                    c_wchar_p]
+
+
+class CompositionError(Exception):
+    pass
 
 
 class Composition:
@@ -28,10 +48,10 @@ class Composition:
         :return: The path of the resulting image.
         """
 
-        if output_path is None:
-            output_path = Path('.')
+        composition_file_name = compute_output_name(self)
+        output_file_name = output_path.joinpath(composition_file_name)
 
-        compose(self._items, self._template)
+        return compose(self._items, self._template, output=output_file_name)
 
     def __str__(self):
         end_line = "\n"
@@ -52,12 +72,34 @@ class Composition:
         # All items must be in different layers.
         layer_id_count = defaultdict(int)
         for item in self._items:
-            layer_id_count[item.layer_id] += 1
+            layer_id_count[item.layer.layer_id] += 1
             # There are two different items assigned to the same svg layer.
-            if layer_id_count[item.layer_id] > 1:
+            if layer_id_count[item.layer.layer_id] > 1:
                 return False
 
         return True
+
+    def filter_items(self, predicate: Callable) -> [CompositionItem]:
+        items = [item for item in self._items if predicate(item)]
+        return items
+
+    @property
+    def primary_item(self) -> CompositionItem:
+        items = self.filter_items(lambda x: x.layer.type == LayerType.PRIMARY)
+        if len(items) > 1:
+            raise CompositionError(_("Found more that one primary item. It should be only one."))
+        return items[0]
+
+    @property
+    def presentation_item(self) -> CompositionItem:
+        items = self.filter_items(lambda x: x.layer.type == LayerType.PRESENTATION)
+        if len(items) > 1:
+            raise CompositionError(_("Found more that one presentation item. It should be only one."))
+        return items[0]
+
+    @property
+    def secondary_items(self) -> CompositionItem:
+        return self.filter_items(lambda x: x.layer.type == LayerType.SECONDARY)
 
 
 class CompositionBuilder:
@@ -108,7 +150,7 @@ class CompositionBuilder:
         combos = itertools.product(self._primaries, [primary_layer])
 
         for image_path, layer in combos:
-            yield CompositionItem(image_path=image_path, layer_id=layer.layer_id, image_id=layer.image_id)
+            yield CompositionItem(image_path=image_path, layer=layer)
 
         raise StopIteration
 
@@ -118,7 +160,7 @@ class CompositionBuilder:
         combos = itertools.product(self._presentations, [presentation_layer])
 
         for image_path, layer in combos:
-            yield CompositionItem(image_path=image_path, layer_id=layer.layer_id, image_id=layer.image_id)
+            yield CompositionItem(image_path=image_path, layer=layer)
 
         raise StopIteration
 
@@ -131,6 +173,72 @@ class CompositionBuilder:
 
         for combo in permutations:
             for image_path, layer in zip(combo, secondary_layers):
-                yield CompositionItem(image_path=image_path, layer_id=layer.layer_id, image_id=layer.image_id)
+                yield CompositionItem(image_path=image_path, layer=layer)
 
         raise StopIteration
+
+
+def despeluze_item_name(item: CompositionItem) -> str:
+    item_path = Path(item.image_path)
+
+    item_name = item_path.name
+    item_name_ext = item_path.suffix
+    item_name = item_name.replace(item_name_ext, '')
+
+    return item_name
+
+
+def compute_output_name(
+        composition: Composition, extension='webp',
+        flower_code_pattern=r'.*',
+        background_code_pattern='.*',
+        bundle_code_pattern='.*'):
+    # Process main product.
+    flower_name = despeluze_item_name(composition.primary_item)
+    flower_name = flower_name.split('_')[0]
+    flower_match = re.match(flower_code_pattern, flower_name)
+
+    if flower_match:
+        flower_name = flower_match.group()
+    else:
+        flower_name = ''
+        logger.warning(Fore.CYAN + "Warning: pattern " +
+                       Fore.YELLOW + flower_code_pattern +
+                       Fore.CYAN + "do not match " + Fore.GREEN + flower_name)
+        logger.warning(Style.RESET_ALL)
+
+    # Do the same for background
+    vase_name = despeluze_item_name(composition.presentation_item)
+    vase_name_match = re.match(background_code_pattern, vase_name)
+
+    if vase_name_match:
+        vase_name = vase_name_match.group()
+    else:
+        vase_name = ''
+        logger.warning(Fore.CYAN + "Warning: pattern " +
+                       Fore.YELLOW + background_code_pattern +
+                       Fore.CYAN + "do not match " + Fore.GREEN + vase_name)
+        logger.warning(Style.RESET_ALL)
+
+    # And for secondary_items_names.
+    secondary_items_names = [despeluze_item_name(item) for item in composition.secondary_items]
+    secondary_items_names = [item_name.split('_')[0] for item_name in secondary_items_names]
+
+    _bundles = []
+
+    for secondary_item in secondary_items_names:
+        match = re.match(bundle_code_pattern, secondary_item)
+        if match:
+            _bundles.append(match.group())
+        else:
+            logger.warning(Fore.CYAN + "Warning: pattern " +
+                           Fore.YELLOW + bundle_code_pattern +
+                           Fore.CYAN + "do not match " + Fore.GREEN + secondary_item)
+            logger.warning(Style.RESET_ALL)
+
+    name_components = filter(
+        lambda x: x != '',
+        [flower_name, vase_name, "_".join(_bundles)]
+    )
+
+    return f"{'_'.join(name_components)}.{extension}"

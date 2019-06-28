@@ -6,7 +6,6 @@ from pathlib import Path
 
 import lxml
 import svgutils as svg
-from svgutils.transform import SVGFigure
 
 logger = logging.getLogger(__file__)
 
@@ -188,7 +187,7 @@ class Template:
         path = Path(background_file_path)
 
         if size is None:
-            size = Size(1290, 1080)
+            size = Size(1500, 1500)
 
         if path.exists() and path.is_file():
             self.__background = background_file_path
@@ -215,12 +214,20 @@ class Template:
         else:
             return svg_figure
 
-    def render(self):
-        """ Write an svg file to the output dir."""
+    def render(self) -> Path:
+        """
+        Write an svg file to the output dir.
+
+        Returns the a Path object with the complete file name
+        of the generated template.
+        """
 
         svg_figure = self.__build_svg_final_figure()
+
         if svg_figure is not None:
-            svg_figure.save(self.__output_dir.joinpath("template.svg"))
+            template_filename = self.__output_dir.joinpath("template.svg")
+            svg_figure.save(template_filename)
+            return template_filename
 
     def render_to_str(self):
         """ Write an svg as string. """
@@ -239,6 +246,10 @@ class Template:
             self.__output_dir = p
         else:
             raise OutputDirError(_("Output dir must be an existing directory."))
+
+    @property
+    def background(self) -> Path:
+        return Path(self.__background)
 
     @staticmethod
     def __inject_layer(svg_xml: bytes, layer: Layer) -> bytes:

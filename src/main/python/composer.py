@@ -26,6 +26,13 @@ class Composer(QMainWindow):
         self.__prepare_graphic_view()
         self.__prepare_property_controls()
 
+        self.ui.pproducts_view_model.setRootPath("/home/miranda/.projects/qpy_image_composer/test_data/CLIPPING-FLOWER")
+        self.ui.sproducts_view_model.setRootPath("/home/miranda/.projects/qpy_image_composer/test_data/BUNDLES-IMAGES")
+        self.ui.backgrounds_view_model.setRootPath(
+            "/home/miranda/.projects/qpy_image_composer/test_data/2019/backgrounds")
+        self.ui.presentations_view_model.setRootPath(
+            "/home/miranda/.projects/qpy_image_composer/test_data/2019/presentation")
+
     def __prepare_graphic_view(self):
         self.ui.preview_scene = ComposerGraphicScene(self.ui.preview)
         self.ui.preview_scene.selectionChanged.connect(self.on_graphic_item_selection_change)
@@ -214,10 +221,12 @@ class Composer(QMainWindow):
                                                  primaries_paths, secondaries_paths, presentations_paths)
 
         compositions = composition_builder.compose()
+
+        output_dir = Path(self.ui.output_path.text())
+
         for composition in compositions:
             if composition.is_valid():
-                print(composition)
-                composition.render(Path("/tmp"))
+                composition.render(output_path=output_dir)
 
 
 if __name__ == '__main__':

@@ -21,11 +21,14 @@ import base64
 import logging
 import os
 import tempfile
+from ctypes import c_void_p, c_wchar_p
 from io import BytesIO
 from pathlib import Path
 
 from colorama import init, Fore, Style
 from lxml import etree
+from wand import image as wand_img
+from wand.api import library
 
 # -----------------------------------------------------------------------------
 # Initialize colorama.
@@ -43,13 +46,20 @@ NS = {
     'xlink': 'http://www.w3.org/1999/xlink',
 }
 
+# -----------------------------------------------------------------------------
+# Some wand settings.
+# -----------------------------------------------------------------------------
+library.MagickSetOption.argtypes = [c_void_p,  # MagickWand * wand
+                                    c_wchar_p,  # const char * option
+                                    c_wchar_p]  # const char * value
+
 logger = logging.getLogger('vf_productcreate')
 
 xml_tree_memoization = {}
 image_memoization = {}
 
 
-def compose(items: [CompositionItem], template: Template, output: Path=None, verbose=False):
+def compose(items: [CompositionItem], template: Template, output: Path = None, verbose=False):
     """
     Compose images from combinations of a set of images and a template.
 
@@ -73,7 +83,7 @@ def compose(items: [CompositionItem], template: Template, output: Path=None, ver
 
         encoded_string = image_memoization[item.image_path]
 
-        svg_image = (svg.xpath('.//svg:image[@id="{}"]'.format(item.image_id), namespaces=NS))
+        svg_image = (svg.xpath('.//svg:image[@id="{}"]'.format(item.layer.image_id), namespaces=NS))
 
         if len(svg_image) == 0:
             if verbose:
@@ -86,12 +96,15 @@ def compose(items: [CompositionItem], template: Template, output: Path=None, ver
 
         svg_image[0].attrib['style'] = "overflow:visible;opacity:100;"
 
-    svg_temp_dir = tempfile.mktemp(dir=tempfile.gettempdir())
+    if output is not None:
+        output_file_path = output
+    else:
+        output_file_path = tempfile.mktemp(dir=str(Path.cwd()), suffix='.webp')
 
-    if svg_temp_name is None:
-        svg_temp_name = '{}.svg'.format(svg_temp_dir)
+    temporary_svg_file = tempfile.NamedTemporaryFile(suffix='.svg')
+
     try:
-        svg.write(svg_temp_name)
+        svg.write(temporary_svg_file)
     except etree.SerialisationError as err:
         if verbose:
             logger.exception(Fore.RED + err)
@@ -99,18 +112,22 @@ def compose(items: [CompositionItem], template: Template, output: Path=None, ver
         else:
             logger.error(Fore.RED + "Error generating: " +
                          Fore.CYAN + "{}".format(svg_temp_name))
-    #     template = svg_temp_name
-    #
-    #     proc = subprocess.Popen(["convert", svg_temp_name,
-    #                              '-adaptive-resize', settings.adaptive_resize,
-    #                              '-unsharp', settings.unsharp, output],
-    #                             stderr=subprocess.PIPE,
-    #                             stdout=subprocess.PIPE)
-    #     out, err = proc.communicate()
-    #     if err != b'':
-    #         logger.error(err)
-    #     else:
-    #         if verbose:
-    #             logger.info(out)
-    #
-    # shutil.os.remove(svg_temp_name)
+
+    # Convert svg to wepb
+
+    image_resolution = 512
+    with wand_img.Image(filename=temporary_svg_file.name, resolution=image_resolution) as image:
+
+        library.MagickSetOption(image.wand, 'webp:lossless', 'true')
+        library.MagickSetOption(image.wand, 'webp:alpha-quality', '100')
+        library.MagickSetOption(image.wand, 'webp:emulate-jpeg-size', 'true')
+        library.MagickSetOption(image.wand, 'webp:method', '6')
+
+        image.compression_quality = 99
+        image.adaptive_resize(1500, 1500)
+        image.unsharp_mask(radius=0, sigma=1, amount=1, threshold=0)
+        image.adaptive_sharpen(0.5, 2.5)
+
+        image.save(filename=str(output_file_path))
+
+        return Path(output_file_path)
