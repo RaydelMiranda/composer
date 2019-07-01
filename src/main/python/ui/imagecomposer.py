@@ -393,7 +393,7 @@ class Ui_Imagecomposer(object):
         Imagecomposer.setStatusBar(self.statusBar)
 
         self.retranslateUi(Imagecomposer)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(Imagecomposer)
 
     def retranslateUi(self, Imagecomposer):
