@@ -35,6 +35,7 @@ from wand.api import library
 # -----------------------------------------------------------------------------
 from composer_core.composer.common import CompositionItem
 from models.template import Template
+from ui.common import GenerationOptions
 
 init()
 
@@ -59,7 +60,7 @@ xml_tree_memoization = {}
 image_memoization = {}
 
 
-def compose(items: [CompositionItem], template: Template, output: Path = None, verbose=False):
+def compose(items: [CompositionItem], template: Template, options: GenerationOptions, output: Path = None, verbose=False):
     """
     Compose images from combinations of a set of images and a template.
 
@@ -125,8 +126,10 @@ def compose(items: [CompositionItem], template: Template, output: Path = None, v
 
         image.compression_quality = 99
         image.adaptive_resize(1500, 1500)
-        image.unsharp_mask(radius=0, sigma=1, amount=1, threshold=0)
-        image.adaptive_sharpen(0.5, 2.5)
+
+        if options.unsharp:
+            image.unsharp_mask(radius=0, sigma=1, amount=1, threshold=0)
+            image.adaptive_sharpen(0.5, 2.5)
 
         image.save(filename=str(output_file_path))
 

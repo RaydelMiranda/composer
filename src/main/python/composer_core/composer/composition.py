@@ -13,6 +13,7 @@ from wand.api import library
 from composer_core.composer.common import CompositionItem
 from composer_core.composer.compose import compose
 from models.template import Template, LayerType
+from ui.common import GenerationOptions
 
 logger = logging.Logger(__name__)
 
@@ -38,7 +39,7 @@ class Composition:
         self._items = items
         self._template = template
 
-    def render(self, output_path: Path = None) -> Path:
+    def render(self, options: GenerationOptions, output_path: Path = None, ) -> Path:
         """
         Render this composition into a complete image.
 
@@ -51,7 +52,7 @@ class Composition:
         composition_file_name = compute_output_name(self)
         output_file_name = output_path.joinpath(composition_file_name)
 
-        return compose(self._items, self._template, output=output_file_name)
+        return compose(self._items, self._template, options, output=output_file_name)
 
     def __str__(self):
         end_line = "\n"

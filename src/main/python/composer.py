@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit, Q
 
 from composer_core.composer.composition import CompositionBuilder
 from models.template import OutputDirError, Template
-from ui.common import PRIMARY, SECONDARY, BACKGROUND, PRESENTATION
+from ui.common import PRIMARY, SECONDARY, BACKGROUND, PRESENTATION, GenerationOptions
 from ui.composer_graphic_scene import ComposerGraphicScene
 from ui.imagecomposer import Ui_Imagecomposer
 from ui.models import ResourceModel
@@ -239,13 +239,18 @@ class Composer(QMainWindow):
 
         output_dir = Path(self.ui.output_path.text())
 
+        options = GenerationOptions(
+            unsharp=self.ui.apply_unsharp.isChecked()
+        )
+
         for composition in compositions:
             if composition.is_valid():
-                composition.render(output_path=output_dir)
+                composition.render(options, output_path=output_dir)
 
     @pyqtSlot()
     def on_using_template_button_clicked(self, *args, **kwargs):
-        template_path, filter = QFileDialog.getOpenFileName(self, _("Select template file."), ".", "Template files (*.svg)")
+        template_path, filter = QFileDialog.getOpenFileName(self, _("Select template file."), ".",
+                                                            "Template files (*.svg)")
 
         with open(template_path, 'rb') as template_file:
             template = Template()

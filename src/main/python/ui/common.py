@@ -1,3 +1,6 @@
+from collections import namedtuple
+
+
 BACKGROUND = "BACKGROUND"
 PRESENTATION = "PRESENTATION"
 PRIMARY = "PRIMARY"
@@ -8,3 +11,5 @@ POSSIBLE_ORIGINS = [
 ]
 
 IMAGE_TYPES = ['svg', 'png', 'jpg', 'jpeg']
+
+GenerationOptions = namedtuple('GenerationOptions', 'unsharp')
