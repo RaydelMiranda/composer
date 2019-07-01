@@ -68,6 +68,9 @@ class ComposerGraphicScene(QGraphicsScene):
 
             item.setPos(ev.pos())
 
+            if origin == BACKGROUND:
+                item.setZValue(-1)
+
             self.addItem(item)
 
             # if origin != BACKGROUND:
