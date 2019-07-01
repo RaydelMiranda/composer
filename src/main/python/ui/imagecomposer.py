@@ -402,7 +402,7 @@ class Ui_Imagecomposer(object):
         self.label_8.setText(_translate("Imagecomposer", "Preview"))
         self.pushButton_2.setText(_translate("Imagecomposer", "Cancel"))
         self.generate_button.setText(_translate("Imagecomposer", "Generate"))
-        self.using_template_button.setText(_translate("Imagecomposer", "Generate using existeing template"))
+        self.using_template_button.setText(_translate("Imagecomposer", "Generate using existing template"))
         self.generate_template_button.setText(_translate("Imagecomposer", "Generate template"))
 
 

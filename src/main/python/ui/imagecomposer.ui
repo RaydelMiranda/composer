@@ -660,7 +660,7 @@
       <item>
        <widget class="QPushButton" name="using_template_button">
         <property name="text">
-         <string>Generate using existeing template</string>
+         <string>Generate using existing template</string>
         </property>
        </widget>
       </item>
