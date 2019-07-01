@@ -59,6 +59,7 @@ class Composer(QMainWindow):
     def __prepare_property_controls(self):
         self.ui.item_pos_x.valueChanged.connect(self.on_x_changed)
         self.ui.item_pos_y.valueChanged.connect(self.on_y_changed)
+        self.ui.item_pos_z.valueChanged.connect(self.on_z_changed)
 
         self.ui.item_width.valueChanged.connect(self.on_width_changed)
         self.ui.item_height.valueChanged.connect(self.on_height_changed)
@@ -169,6 +170,13 @@ class Composer(QMainWindow):
             # No item selected
             return
         item.setY(value)
+
+    def on_z_changed(self, value):
+        item = self.__selected_item()
+        if item is None:
+            # No item selected
+            return
+        item.setZValue(value)
 
     def on_height_changed(self, height):
         item = self.__selected_item()
