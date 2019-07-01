@@ -152,8 +152,6 @@ class CompositionBuilder:
         for image_path, layer in combos:
             yield CompositionItem(image_path=image_path, layer=layer)
 
-        raise StopIteration
-
     def build_presentation_items(self) -> [CompositionItem]:
 
         presentation_layer = self._template.get_presentation_layer()
@@ -161,8 +159,6 @@ class CompositionBuilder:
 
         for image_path, layer in combos:
             yield CompositionItem(image_path=image_path, layer=layer)
-
-        raise StopIteration
 
     def build_secondary_items(self) -> [CompositionItem]:
 
@@ -174,8 +170,6 @@ class CompositionBuilder:
         for combo in permutations:
             for image_path, layer in zip(combo, secondary_layers):
                 yield CompositionItem(image_path=image_path, layer=layer)
-
-        raise StopIteration
 
 
 def despeluze_item_name(item: CompositionItem) -> str:
