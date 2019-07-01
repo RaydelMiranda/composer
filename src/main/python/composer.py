@@ -5,7 +5,7 @@ from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit, QErrorMessage
 
 from composer_core.composer.composition import CompositionBuilder
-from models.template import OutputDirError
+from models.template import OutputDirError, Template
 from ui.common import PRIMARY, SECONDARY, BACKGROUND, PRESENTATION
 from ui.composer_graphic_scene import ComposerGraphicScene
 from ui.imagecomposer import Ui_Imagecomposer
@@ -25,7 +25,6 @@ class Composer(QMainWindow):
         self.__prepare_list_views()
         self.__prepare_graphic_view()
         self.__prepare_property_controls()
-
 
     def __prepare_graphic_view(self):
         self.ui.preview_scene = ComposerGraphicScene(self.ui.preview)
@@ -235,6 +234,16 @@ class Composer(QMainWindow):
         for composition in compositions:
             if composition.is_valid():
                 composition.render(output_path=output_dir)
+
+    @pyqtSlot()
+    def on_using_template_button_clicked(self, *args, **kwargs):
+        template_path, filter = QFileDialog.getOpenFileName(self, _("Select template file."), ".", "Template files (*.svg)")
+
+        with open(template_path, 'rb') as template_file:
+            template = Template()
+            template.load_from_file(template_file=template_file)
+            self.ui.preview_scene.template = template
+            self.on_generate_button_clicked()
 
 
 if __name__ == '__main__':

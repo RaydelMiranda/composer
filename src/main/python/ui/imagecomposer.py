@@ -352,6 +352,9 @@ class Ui_Imagecomposer(object):
         self.generate_button = QtWidgets.QPushButton(self.centralWidget)
         self.generate_button.setObjectName("generate_button")
         self.horizontalLayout.addWidget(self.generate_button)
+        self.using_template_button = QtWidgets.QPushButton(self.centralWidget)
+        self.using_template_button.setObjectName("using_template_button")
+        self.horizontalLayout.addWidget(self.using_template_button)
         self.generate_template_button = QtWidgets.QPushButton(self.centralWidget)
         self.generate_template_button.setObjectName("generate_template_button")
         self.horizontalLayout.addWidget(self.generate_template_button)
@@ -399,6 +402,7 @@ class Ui_Imagecomposer(object):
         self.label_8.setText(_translate("Imagecomposer", "Preview"))
         self.pushButton_2.setText(_translate("Imagecomposer", "Cancel"))
         self.generate_button.setText(_translate("Imagecomposer", "Generate"))
+        self.using_template_button.setText(_translate("Imagecomposer", "Generate using existeing template"))
         self.generate_template_button.setText(_translate("Imagecomposer", "Generate template"))
 
 

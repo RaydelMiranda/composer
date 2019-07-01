@@ -6,6 +6,8 @@ from pathlib import Path
 
 import lxml
 import svgutils as svg
+from lxml import etree
+from lxml.cssselect import CSSSelector
 
 logger = logging.getLogger(__file__)
 
@@ -138,7 +140,8 @@ class Template:
 
         self.__layers = []
         self.__background = None
-
+        self.__loaded_from_file = False
+        self.__str_representation = None
         self.__output_dir = Path.cwd()
 
         if output_dir is not None:
@@ -155,12 +158,41 @@ class Template:
 
     def add_layer(self, pos: Position, size: Size, _type: LayerType) -> Layer:
 
-        if self.__base_svg is None:
+        if self.__base_svg is None and not self.__loaded_from_file:
             raise NoBaseSvgError(_("You must set a background before being able to add any layer."))
 
         layer = Layer(pos, size, _type)
         self.__layers.append(layer)
         return layer
+
+    def load_from_file(self, template_file):
+
+        layer_selector = CSSSelector("[id^=layer-]")
+        image_selector = CSSSelector("[id^=image-]")
+
+        parser = etree.XMLParser()
+        tree = etree.parse(template_file, parser)
+
+        self.__str_representation = etree.tostring(tree)
+
+        layer_type_map = {
+            LayerType.PRIMARY.name: LayerType.PRIMARY,
+            LayerType.SECONDARY.name: LayerType.SECONDARY,
+            LayerType.PRESENTATION.name: LayerType.PRESENTATION,
+        }
+
+        self.__loaded_from_file = True
+
+        for layer in layer_selector(tree):
+
+            layer_type_name = layer.get("id").split('-')[1]
+
+            image = image_selector(layer)[0]
+
+            pos = Position(x=image.get("x"), y=image.get("y"), z=0)
+            size = Size(width=image.get("width"), height=image.get("height"))
+
+            self.add_layer(pos=pos, size=size, _type=layer_type_map[layer_type_name])
 
     def map_layer_with_item(self, layer: Layer, graphic_item):
         self.__layer_map_to_item[graphic_item] = layer
@@ -168,38 +200,6 @@ class Template:
     def remove_layer_for_item(self, item):
         self.__layers.remove(self.__layer_map_to_item[item])
         del self.__layer_map_to_item[item]
-
-    def update_layer(self, item):
-        layer = self.__layer_map_to_item.get(item)
-
-        if layer is None:
-            return
-
-        scale_factor = item.scale()
-
-        pos = Position(item.x(), item.y(), item.zValue())
-
-        size = Size(
-            item.boundingRect().width() * scale_factor,
-            item.boundingRect().height() * scale_factor
-        )
-
-        layer.update(pos, size)
-
-    def set_background(self, background_file_path: str, size: Size = None):
-
-        path = Path(background_file_path)
-
-        if size is None:
-            size = Size(1500, 1500)
-
-        if path.exists() and path.is_file():
-            self.__background = background_file_path
-
-        self.__base_svg = svg.compose.Figure(
-            size.width, size.height,
-            svg.compose.Image(size.width, size.height, background_file_path)
-        )
 
     def __build_svg_final_figure(self):
         if self.__base_svg is None:
@@ -217,27 +217,6 @@ class Template:
             return None
         else:
             return svg_figure
-
-    def render(self) -> Path:
-        """
-        Write an svg file to the output dir.
-
-        Returns the a Path object with the complete file name
-        of the generated template.
-        """
-
-        svg_figure = self.__build_svg_final_figure()
-
-        if svg_figure is not None:
-            template_filename = self.__output_dir.joinpath("template.svg")
-            svg_figure.save(template_filename)
-            return template_filename
-
-    def render_to_str(self):
-        """ Write an svg as string. """
-        svg_figure = self.__build_svg_final_figure()
-        if svg_figure is not None:
-            return svg_figure.to_str()
 
     @property
     def output_dir(self):
@@ -277,3 +256,61 @@ class Template:
 
     def get_secondary_layers(self) -> [Layer]:
         return [layer for layer in self.__layers if layer.type == LayerType.SECONDARY]
+
+    def render(self) -> Path:
+        """
+        Write an svg file to the output dir.
+
+        Returns the a Path object with the complete file name
+        of the generated template.
+        """
+
+        svg_figure = self.__build_svg_final_figure()
+
+        if svg_figure is not None:
+            template_filename = self.__output_dir.joinpath("template.svg")
+            svg_figure.save(template_filename)
+            return template_filename
+
+    def render_to_str(self):
+        """ Write an svg as string. """
+        if self.__str_representation is not None:
+            return self.__str_representation
+
+        svg_figure = self.__build_svg_final_figure()
+        if svg_figure is not None:
+            self.__str_representation = svg_figure.to_str()
+
+        return self.__str_representation
+
+    def set_background(self, background_file_path: str, size: Size = None):
+
+        path = Path(background_file_path)
+
+        if size is None:
+            size = Size(1500, 1500)
+
+        if path.exists() and path.is_file():
+            self.__background = background_file_path
+
+        self.__base_svg = svg.compose.Figure(
+            size.width, size.height,
+            svg.compose.Image(size.width, size.height, background_file_path)
+        )
+
+    def update_layer(self, item):
+        layer = self.__layer_map_to_item.get(item)
+
+        if layer is None:
+            return
+
+        scale_factor = item.scale()
+
+        pos = Position(item.x(), item.y(), item.zValue())
+
+        size = Size(
+            item.boundingRect().width() * scale_factor,
+            item.boundingRect().height() * scale_factor
+        )
+
+        layer.update(pos, size)

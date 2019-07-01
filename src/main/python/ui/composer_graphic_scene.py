@@ -38,7 +38,7 @@ class ComposerGraphicScene(QGraphicsScene):
 
     @template.setter
     def template(self, value):
-        raise ReadOnlyError(_("Template can't be set it directly."))
+        self.__template = value
 
     def dragEnterEvent(self, ev):
         if ev.mimeData().hasImage():
