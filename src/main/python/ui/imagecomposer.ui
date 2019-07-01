@@ -413,7 +413,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -661,6 +661,22 @@
         </property>
         <property name="text">
          <string>Apply unsharp</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="override_images">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>50</y>
+          <width>201</width>
+          <height>25</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Overwrite target files</string>
         </property>
         <property name="checked">
          <bool>true</bool>

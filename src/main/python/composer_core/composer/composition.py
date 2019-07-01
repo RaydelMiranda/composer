@@ -43,6 +43,7 @@ class Composition:
         """
         Render this composition into a complete image.
 
+        :param options: Some options passed to the function that actually generates images.
         :param output_path: The directory where to save the resulting image. If not set
                             the current working directory is used.
 

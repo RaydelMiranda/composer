@@ -354,6 +354,10 @@ class Ui_Imagecomposer(object):
         self.apply_unsharp.setGeometry(QtCore.QRect(10, 20, 181, 25))
         self.apply_unsharp.setChecked(True)
         self.apply_unsharp.setObjectName("apply_unsharp")
+        self.override_images = QtWidgets.QCheckBox(self.tab_2)
+        self.override_images.setGeometry(QtCore.QRect(10, 50, 201, 25))
+        self.override_images.setChecked(True)
+        self.override_images.setObjectName("override_images")
         self.tabWidget.addTab(self.tab_2, "")
         self.verticalLayout_6.addWidget(self.tabWidget)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
@@ -389,7 +393,7 @@ class Ui_Imagecomposer(object):
         Imagecomposer.setStatusBar(self.statusBar)
 
         self.retranslateUi(Imagecomposer)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(Imagecomposer)
 
     def retranslateUi(self, Imagecomposer):
@@ -420,6 +424,7 @@ class Ui_Imagecomposer(object):
         self.label_8.setText(_translate("Imagecomposer", "Preview"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("Imagecomposer", "Image composition"))
         self.apply_unsharp.setText(_translate("Imagecomposer", "Apply unsharp"))
+        self.override_images.setText(_translate("Imagecomposer", "Overwrite target files"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("Imagecomposer", "Advanced options"))
         self.pushButton_2.setText(_translate("Imagecomposer", "Cancel"))
         self.generate_button.setText(_translate("Imagecomposer", "Generate"))

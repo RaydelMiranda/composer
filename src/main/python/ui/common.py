@@ -12,4 +12,4 @@ POSSIBLE_ORIGINS = [
 
 IMAGE_TYPES = ['svg', 'png', 'jpg', 'jpeg']
 
-GenerationOptions = namedtuple('GenerationOptions', 'unsharp')
+GenerationOptions = namedtuple('GenerationOptions', 'unsharp, override_images')

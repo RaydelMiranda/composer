@@ -131,6 +131,9 @@ def compose(items: [CompositionItem], template: Template, options: GenerationOpt
             image.unsharp_mask(radius=0, sigma=1, amount=1, threshold=0)
             image.adaptive_sharpen(0.5, 2.5)
 
+        if options.override_images and output_file_path.exists():
+            output_file_path.unlink()
+
         image.save(filename=str(output_file_path))
 
         return Path(output_file_path)

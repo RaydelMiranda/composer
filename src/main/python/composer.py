@@ -240,7 +240,8 @@ class Composer(QMainWindow):
         output_dir = Path(self.ui.output_path.text())
 
         options = GenerationOptions(
-            unsharp=self.ui.apply_unsharp.isChecked()
+            unsharp=self.ui.apply_unsharp.isChecked(),
+            override_images=self.ui.override_images.isChecked()
         )
 
         for composition in compositions:
