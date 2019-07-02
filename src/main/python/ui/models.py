@@ -3,13 +3,51 @@ from gettext import gettext as _
 from pathlib import Path
 
 import magic
-from PyQt5.QtCore import Qt, QDirIterator, QAbstractListModel
+from PyQt5.QtCore import Qt, QDirIterator, QAbstractListModel, QThread, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QPixmap
 
 from models.errors import ReadOnlyError
 from ui.common import IMAGE_TYPES
 
 Resource = namedtuple('Resource', 'path, image, thumbnail')
+
+
+class LoadingImagesThread(QThread):
+    resource_loaded = pyqtSignal(Resource)
+
+    def __init__(self, path: str, _filter: [str]):
+        super(LoadingImagesThread, self).__init__()
+
+        self._path = path
+        self._filter = _filter
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+
+        file_iter = QDirIterator(self._path, QDirIterator.Subdirectories)
+
+        while file_iter.hasNext():
+
+            file_name = file_iter.next()
+
+            if Path(file_name).is_dir():
+                continue
+
+            condition = [
+                magic.from_file(file_name).lower().startswith(ext)
+                for ext in self._filter
+            ]
+
+            if any(condition):
+                new_resource = Resource(
+                    path=file_name,
+                    image=QPixmap(file_name),
+                    thumbnail=QPixmap(file_name).scaled(190, 190, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                )
+
+                self.resource_loaded.emit(new_resource)
 
 
 class ResourceModel(QAbstractListModel):
@@ -49,36 +87,24 @@ class ResourceModel(QAbstractListModel):
 
         self.__root_path = path
 
-        file_iter = QDirIterator(path, QDirIterator.Subdirectories)
+        load_images_thread = LoadingImagesThread(path=path, _filter=self.__filter)
+        load_images_thread.resource_loaded.connect(self.resource_loaded)
+        load_images_thread.start()
 
-        while file_iter.hasNext():
-
-            file_name = file_iter.next()
-
-            if Path(file_name).is_dir():
-                continue
-
-            condition = [
-                magic.from_file(file_name).lower().startswith(ext)
-                for ext in self.__filter
-            ]
-
-            if any(condition):
-                self.beginInsertRows(self.index(end), end, end + 1)
-                self.__resources.append(
-                    Resource(
-                        path=file_name,
-                        image=QPixmap(file_name),
-                        thumbnail=QPixmap(file_name).scaled(190, 190, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                     )
-                )
-                self.endInsertRows()
+    @pyqtSlot(Resource, name="resource_loaded")
+    def resource_loaded(self, resource):
+        end = len(self.__resources)
+        self.beginInsertRows(self.index(end), end, end + 1)
+        self.__resources.append(resource)
+        self.endInsertRows()
 
     def data(self, index, role=None):
+
         if role == Qt.DecorationRole:
             return self.__resources[index.row()].thumbnail
 
     def flags(self, index):
+
         if index.isValid():
             return super(ResourceModel, self).flags(index) | Qt.ItemIsDragEnabled
 
