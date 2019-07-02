@@ -189,7 +189,7 @@ class Composer(QMainWindow):
         message.exec()
 
     def __collect_resource_path(self, edit: QLineEdit, message: str) -> str:
-        path = QFileDialog.getExistingDirectory(self, message)
+        path = QFileDialog.getExistingDirectory(self, message, directory=edit.text())
         edit.setText(path)
         self.__settings_changed()
         self.__settings.save()
