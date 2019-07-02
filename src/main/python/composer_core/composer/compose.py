@@ -22,11 +22,12 @@ import logging
 import os
 import tempfile
 from ctypes import c_void_p, c_wchar_p
-from io import BytesIO
-from pathlib import Path
+from gettext import gettext as _
 
 from colorama import init, Fore, Style
+from io import BytesIO
 from lxml import etree
+from pathlib import Path
 from wand import image as wand_img
 from wand.api import library
 
@@ -60,10 +61,13 @@ xml_tree_memoization = {}
 image_memoization = {}
 
 
-def compose(items: [CompositionItem], template: Template, options: GenerationOptions, output: Path = None, verbose=False):
+def compose(
+        items: [CompositionItem], template: Template, options: GenerationOptions,
+        output: Path = None, verbose=False) -> Path:
     """
     Compose images from combinations of a set of images and a template.
 
+    :param options: A named tuple containing several configurable options for rendering.
     :param items: A list compositions items.
     :param template: The template.
     :param output:  The result image file name.
@@ -87,10 +91,11 @@ def compose(items: [CompositionItem], template: Template, options: GenerationOpt
         svg_image = (svg.xpath('.//svg:image[@id="{}"]'.format(item.layer.image_id), namespaces=NS))
 
         if len(svg_image) == 0:
-            if verbose:
-                print("Error parsing layer, check that the image and layer ids are as "
-                      "expected.")
-            return
+            message = _(
+                "Error parsing layer, check that the image and layer "
+                "ids are as expected."
+            )
+            logger.error(message)
 
         svg_image[0].attrib['{http://www.w3.org/1999/xlink}href'] = \
             "data:image/{};base64,{}".format(os.path.splitext(item.image_path)[1][1:], str(encoded_string)[1:])

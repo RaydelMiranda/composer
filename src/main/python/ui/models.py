@@ -1,10 +1,10 @@
 from collections import namedtuple
 from gettext import gettext as _
-from pathlib import Path
 
 import magic
-from PyQt5.QtCore import Qt, QDirIterator, QAbstractListModel, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import Qt, QDirIterator, QAbstractListModel, pyqtSignal, pyqtSlot, QObject, QThread
 from PyQt5.QtGui import QPixmap
+from pathlib import Path
 
 from models.errors import ReadOnlyError
 from ui.common import IMAGE_TYPES
@@ -12,17 +12,15 @@ from ui.common import IMAGE_TYPES
 Resource = namedtuple('Resource', 'path, image, thumbnail')
 
 
-class LoadingImagesThread(QThread):
+class LoadingImagesWorker(QObject):
     resource_loaded = pyqtSignal(Resource)
+    finished = pyqtSignal()
 
     def __init__(self, path: str, _filter: [str]):
-        super(LoadingImagesThread, self).__init__()
+        super(LoadingImagesWorker, self).__init__()
 
         self._path = path
         self._filter = _filter
-
-    def __del__(self):
-        self.wait()
 
     def run(self):
 
@@ -48,6 +46,8 @@ class LoadingImagesThread(QThread):
                 )
 
                 self.resource_loaded.emit(new_resource)
+
+        self.finished.emit()
 
 
 class ResourceModel(QAbstractListModel):
@@ -87,9 +87,13 @@ class ResourceModel(QAbstractListModel):
 
         self.__root_path = path
 
-        load_images_thread = LoadingImagesThread(path=path, _filter=self.__filter)
-        load_images_thread.resource_loaded.connect(self.resource_loaded)
-        load_images_thread.start()
+        self._thread = QThread()
+        self._load_images_worker = LoadingImagesWorker(path=path, _filter=self.__filter)
+        self._load_images_worker.moveToThread(self._thread)
+        self._thread.started.connect(self._load_images_worker.run)
+        self._load_images_worker.resource_loaded.connect(self.resource_loaded)
+        self._thread.start()
+        self._load_images_worker.finished.connect(self._thread.quit)
 
     @pyqtSlot(Resource, name="resource_loaded")
     def resource_loaded(self, resource):

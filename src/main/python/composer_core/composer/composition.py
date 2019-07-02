@@ -100,7 +100,7 @@ class Composition:
         return items[0]
 
     @property
-    def secondary_items(self) -> CompositionItem:
+    def secondary_items(self) -> [CompositionItem]:
         return self.filter_items(lambda x: x.layer.type == LayerType.SECONDARY)
 
 

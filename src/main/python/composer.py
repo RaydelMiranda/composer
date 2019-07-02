@@ -1,15 +1,36 @@
 from gettext import gettext as _
 from pathlib import Path
 
-from PyQt5.QtCore import pyqtSlot, Qt
-from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit, QErrorMessage
+from PyQt5.QtCore import pyqtSlot, Qt, QThread, pyqtSignal, QObject
+from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit, QErrorMessage, QMessageBox
 
-from composer_core.composer.composition import CompositionBuilder
+from composer_core.composer.composition import CompositionBuilder, Composition
 from models.template import OutputDirError, Template
 from ui.common import PRIMARY, SECONDARY, BACKGROUND, PRESENTATION, GenerationOptions
 from ui.composer_graphic_scene import ComposerGraphicScene
 from ui.imagecomposer import Ui_Imagecomposer
 from ui.models import ResourceModel
+
+
+class ComposeWorker(QObject):
+    # Composition ready signal, receives a str as argument being the path
+    # of the resulting composition.
+    composition_ready = pyqtSignal(str)
+    composition_finished = pyqtSignal()
+
+    def __init__(self, compositions: [Composition], options: GenerationOptions, output_path: Path):
+        super(ComposeWorker, self).__init__()
+
+        self._compositions = compositions
+        self._options = options
+        self._output_path = output_path
+
+    def run(self):
+        for composition in self._compositions:
+            if composition.is_valid():
+                path = composition.render(self._options, output_path=self._output_path)
+                self.composition_ready.emit(str(path))
+        self.composition_finished.emit()
 
 
 class Composer(QMainWindow):
@@ -25,6 +46,9 @@ class Composer(QMainWindow):
         self.__prepare_list_views()
         self.__prepare_graphic_view()
         self.__prepare_property_controls()
+
+        self._composition_thread = QThread()
+        self._composition_worker = None
 
     def __prepare_graphic_view(self):
         self.ui.preview_scene = ComposerGraphicScene(self.ui.preview)
@@ -111,7 +135,13 @@ class Composer(QMainWindow):
 
     @pyqtSlot()
     def on_generate_template_button_clicked(self):
-        self.ui.preview_scene.render_template()
+        path = self.ui.preview_scene.render_template()
+
+        message = QMessageBox(self)
+        message.setText(_("Template generated"))
+        message.setInformativeText(str(path))
+
+        message.exec()
 
     def __collect_resource_path(self, edit: QLineEdit, message: str) -> str:
         path = QFileDialog.getExistingDirectory(self, message)
@@ -232,10 +262,11 @@ class Composer(QMainWindow):
         secondaries_paths = [Path(resource.path) for resource in self.ui.sproducts_view_model.resources]
         presentations_paths = [Path(resource.path) for resource in self.ui.presentations_view_model.resources]
 
-        composition_builder = CompositionBuilder(template,
-                                                 primaries_paths, secondaries_paths, presentations_paths)
+        composition_builder = CompositionBuilder(
+            template, primaries_paths, secondaries_paths, presentations_paths
+        )
 
-        compositions = composition_builder.compose()
+        compositions = list(composition_builder.compose())
 
         output_dir = Path(self.ui.output_path.text())
 
@@ -244,11 +275,38 @@ class Composer(QMainWindow):
             override_images=self.ui.override_images.isChecked()
         )
 
-        for composition in compositions:
-            if composition.is_valid():
-                composition.render(options, output_path=output_dir)
+        self.ui.progressBar.setValue(0)
+        self.ui.progressBar.setMaximum(len(compositions))
+        self.ui.progressBar.setVisible(True)
 
-    @pyqtSlot()
+        self._composition_thread = QThread()
+        self._composition_worker = ComposeWorker(compositions, options, output_dir)
+        self._composition_worker.moveToThread(self._composition_thread)
+
+        self._composition_worker.composition_ready.connect(self.on_composition_ready)
+        self._composition_worker.composition_finished.connect(self._composition_thread.quit)
+        self._composition_worker.composition_finished.connect(self.on_generation_complete)
+
+        self._composition_thread.started.connect(self._composition_worker.run)
+
+        self._composition_thread.start()
+
+    @pyqtSlot(str, name="on_composition_ready")
+    def on_composition_ready(self, composition_path):
+        self.ui.progressBar.setValue(self.ui.progressBar.value() + 1)
+
+    @pyqtSlot(name="on_generation_complete")
+    def on_generation_complete(self, *args, **kwargs):
+
+        dialog = QMessageBox(self)
+        dialog.setText(_("Generation complete"))
+        dialog.setIcon(QMessageBox.Information)
+        dialog.exec()
+
+        self.ui.progressBar.setValue(0)
+
+
+    @pyqtSlot(name="on_using_template_button_clicked")
     def on_using_template_button_clicked(self, *args, **kwargs):
         template_path, filter = QFileDialog.getOpenFileName(self, _("Select template file."), ".",
                                                             "Template files (*.svg)")

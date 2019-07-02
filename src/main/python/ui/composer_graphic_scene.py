@@ -1,4 +1,5 @@
 from gettext import gettext as _
+from pathlib import Path
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QErrorMessage
@@ -137,8 +138,8 @@ class ComposerGraphicScene(QGraphicsScene):
             else:
                 self.__template.map_layer_with_item(layer, graphic_item=item)
 
-    def render_template(self):
-        self.__template.render()
+    def render_template(self) -> Path:
+        return self.__template.render()
 
     def set_output_dir(self, path: str):
         self.__template.output_dir = path

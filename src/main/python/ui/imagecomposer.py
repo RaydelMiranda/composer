@@ -364,6 +364,7 @@ class Ui_Imagecomposer(object):
         self.horizontalLayout.setSpacing(6)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.progressBar = QtWidgets.QProgressBar(self.centralWidget)
+        self.progressBar.setMinimumSize(QtCore.QSize(850, 0))
         self.progressBar.setProperty("value", 0)
         self.progressBar.setObjectName("progressBar")
         self.horizontalLayout.addWidget(self.progressBar)
