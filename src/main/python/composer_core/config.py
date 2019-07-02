@@ -20,25 +20,31 @@ This file is part of "Villa Flores product creator".
 import configparser
 import os
 from functools import partial
-from itertools import groupby
 
 USER_FOLDER = os.environ.get('VF_CONFIG_DIR', False) or os.path.expanduser('~')
-CONF_DIR = os.path.join(USER_FOLDER, '.vf_suite/')
-CONFIG_FILE = os.path.join(USER_FOLDER, '.vf_suite/vfconf.cfg')
+CONF_DIR = os.path.join(USER_FOLDER, '.composer/')
+CONFIG_FILE = os.path.join(USER_FOLDER, '.composer/composer.cfg')
 
 config = configparser.ConfigParser()
 
 if not os.path.exists(CONFIG_FILE):
-    config.add_section('product_creator')
-    config.set('product_creator', 'flower_code_pattern', '.*')
-    config.set('product_creator', 'background_code_pattern', '.*')
-    config.set('product_creator', 'bundles_code_pattern', '.*')
-    config.set('product_creator', 'num_threads', '5')
-    config.set('product_creator', 'bundles_number', '3')
-    config.set('product_creator', 'flower_layer_id', 'clipping-flower-image')
-    config.set('product_creator', 'output_geometry', '568x568')
-    config.set('product_creator', 'adaptive_resize', '1500x')
-    config.set('product_creator', 'unsharp', '0x1')
+    config.add_section('composer')
+    config.set('composer', 'main_product_code_pattern', '.*')
+    config.set('composer', 'presentation_code_pattern', '.*')
+    config.set('composer', 'secondary_product_code_pattern', '.*')
+    config.set('composer', 'num_threads', '5')
+    config.set('composer', 'output_geometry', '568x568')
+    config.set('composer', 'adaptive_resize_width', '1500')
+    config.set('composer', 'adaptive_resize_height', '1500')
+    config.set('composer', 'unsharp', "True")
+    config.set('composer', 'override_target_files', "True")
+    config.set('composer', 'output_path', ".")
+    config.set('composer', 'output_path', 'output')
+
+    config.set('composer', 'main_products_path', 'main_products')
+    config.set('composer', 'secondary_products_path', 'secondary_products')
+    config.set('composer', 'presentations_path', 'presentations')
+    config.set('composer', 'backgrounds_path', 'backgrounds')
 
     if not os.path.exists(CONF_DIR):
         os.mkdir(CONF_DIR)
@@ -54,75 +60,75 @@ class ConfigHelper(object):
     def __init__(self, config_object):
         self.__config = config_object
 
-        self.get_config = partial(self.__config.get, 'product_creator')
+        self.get_config = partial(self.__config.get, 'composer')
         self.get_config_boolean = partial(self.__config.getboolean,
-                                          'product_creator')
-        self.get_config_int = partial(self.__config.getint, 'product_creator')
+                                          'composer')
+        self.get_config_int = partial(self.__config.getint, 'composer')
+        self.set_config_value = partial(self.__config.set, 'composer')
+
+    def save(self):
+        with open(CONFIG_FILE, 'w') as config_file:
+            self.__config.write(config_file)
 
     @property
-    def flower_layer_id(self):
-        return self.get_config('flower_layer_id')
+    def main_products_path(self):
+        return self.get_config('main_products_path')
 
     @property
-    def bundle_layers(self):
-        return self.get_config('bundles_layers_id').rsplit()
+    def main_product_code_pattern(self):
+        return self.get_config('main_product_code_pattern')
 
     @property
-    def flowers_folder(self):
-        return self.get_config('flowers_folder')
-
-    @property
-    def flower_code_pattern(self):
-        return self.get_config('flower_code_pattern')
-
-    @property
-    def backgrounds_folder(self):
-        return self.get_config('backgrounds_folder')
+    def backgrounds_path(self):
+        return self.get_config('backgrounds_path')
 
     @property
     def background_code_pattern(self):
         return self.get_config('background_code_pattern')
 
     @property
-    def bundles_folder(self):
-        return self.get_config('bundles_folder')
+    def secondary_products_path(self):
+        return self.get_config('secondary_products_path')
 
     @property
-    def bundles_code_pattern(self):
-        return self.get_config('bundles_code_pattern')
+    def secondary_product_code_pattern(self):
+        return self.get_config('secondary_product_code_pattern')
 
     @property
-    def bundles_number(self):
-        return self.get_config_int('bundles_number')
+    def adaptive_resize_width(self):
+        return self.get_config_int('adaptive_resize_width')
 
     @property
-    def output_geometry(self):
-        return self.get_config('output_geometry')
-
-    @property
-    def adaptive_resize(self):
-        return self.get_config('adaptive_resize')
+    def adaptive_resize_height(self):
+        return self.get_config_int('adaptive_resize_height')
 
     @property
     def unsharp(self):
-        return self.get_config('unsharp')
-
-    @property
-    def bundle_layer_selection(self):
-        params = self.get_config('layer_bundle_selection').rsplit()
-        result = {}
-        last_key = None
-        for k, g in groupby(params):
-            if k not in self.bundle_layers:
-                result.update({k: []})
-                last_key = k
-            else:
-                result[last_key].extend(list(g))
-        return result
+        return self.get_config_boolean('unsharp')
 
     @property
     def num_threads(self):
         return self.get_config_int('num_threads')
+
+    @property
+    def override_target_files(self):
+        return self.get_config_boolean('override_target_files')
+
+    @property
+    def output_path(self):
+        return self.get_config('output_path')
+
+    @property
+    def presentations_path(self):
+        return self.get_config('presentations_path')
+
+    @property
+    def backgrounds_path(self):
+        return self.get_config('backgrounds_path')
+
+    @property
+    def inner_config_obj(self):
+        return self.__config
 
 
 settings = ConfigHelper(config)

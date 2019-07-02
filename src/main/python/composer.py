@@ -5,6 +5,7 @@ from PyQt5.QtCore import pyqtSlot, Qt, QThread, pyqtSignal, QObject
 from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit, QErrorMessage, QMessageBox
 
 from composer_core.composer.composition import CompositionBuilder, Composition
+from composer_core.config import settings
 from models.template import OutputDirError, Template
 from ui.common import PRIMARY, SECONDARY, BACKGROUND, PRESENTATION, GenerationOptions
 from ui.composer_graphic_scene import ComposerGraphicScene
@@ -40,6 +41,7 @@ class Composer(QMainWindow):
         # initializing ui components.
         self.ui = Ui_Imagecomposer()
         self.ui.setupUi(self)
+        self.__settings = settings
 
         self.ui.output_path.editingFinished.connect(self.on_output_path_changed)
 
@@ -49,6 +51,49 @@ class Composer(QMainWindow):
 
         self._composition_thread = QThread()
         self._composition_worker = None
+
+        self.__load_settings()
+
+        # Connect conf widgets.
+        self.ui.apply_unsharp.clicked.connect(self.__settings_changed)
+        self.ui.override_images.clicked.connect(self.__settings_changed)
+
+    def __load_settings(self):
+        # Resource settings.
+        self.ui.main_products_path.setText(str(Path(settings.main_products_path).absolute()))
+        self.ui.secondary_products_path.setText(str(Path(settings.secondary_products_path).absolute()))
+        self.ui.presentations_path.setText(str(Path(settings.presentations_path).absolute()))
+        self.ui.backgrounds_path.setText(str(Path(settings.backgrounds_path).absolute()))
+        self.ui.output_path.setText(str(Path(settings.output_path).absolute()))
+        # Generation settings.
+        self.ui.apply_unsharp.setChecked(self.__settings.unsharp)
+        self.ui.override_images.setChecked(self.__settings.override_target_files)
+
+        # Loading image resource lists according conf.
+        self.ui.pproducts_view_model.setRootPath(self.ui.main_products_path.text())
+        self.ui.sproducts_view_model.setRootPath(self.ui.secondary_products_path.text())
+        self.ui.presentations_view_model.setRootPath(self.ui.presentations_path.text())
+        self.ui.backgrounds_view_model.setRootPath(self.ui.backgrounds_path.text())
+
+        # Setting output dir.
+        try:
+            self.ui.preview_scene.set_output_dir(self.ui.output_path.text())
+        except OutputDirError as err:
+            self.ui.output_path.setText("")
+
+    def __settings_changed(self, *args, **kwargs):
+        pwd = Path.cwd()
+
+        self.__settings.set_config_value("output_path", self.ui.output_path.text() or f'{pwd}')
+        self.__settings.set_config_value("main_products_path", self.ui.main_products_path.text() or f'{pwd}')
+        self.__settings.set_config_value("secondary_products_path", self.ui.secondary_products_path.text() or f'{pwd}')
+        self.__settings.set_config_value("presentations_path", self.ui.presentations_path.text() or f'{pwd}')
+        self.__settings.set_config_value("backgrounds_path", self.ui.backgrounds_path.text() or f'{pwd}')
+
+        self.__settings.set_config_value("unsharp", str(self.ui.apply_unsharp.isChecked()))
+        self.__settings.set_config_value("override_target_files", str(self.ui.override_images.isChecked()))
+
+        self.__settings.save()
 
     def __prepare_graphic_view(self):
         self.ui.preview_scene = ComposerGraphicScene(self.ui.preview)
@@ -146,6 +191,8 @@ class Composer(QMainWindow):
     def __collect_resource_path(self, edit: QLineEdit, message: str) -> str:
         path = QFileDialog.getExistingDirectory(self, message)
         edit.setText(path)
+        self.__settings_changed()
+        self.__settings.save()
         return path
 
     def resizeEvent(self, event):
@@ -304,7 +351,6 @@ class Composer(QMainWindow):
         dialog.exec()
 
         self.ui.progressBar.setValue(0)
-
 
     @pyqtSlot(name="on_using_template_button_clicked")
     def on_using_template_button_clicked(self, *args, **kwargs):
