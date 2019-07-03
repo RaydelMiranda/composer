@@ -63,7 +63,7 @@ image_memoization = {}
 
 def compose(
         items: [CompositionItem], template: Template, options: GenerationOptions,
-        output: Path = None, verbose=False) -> Path:
+        output: Path, verbose=False) -> Path:
     """
     Compose images from combinations of a set of images and a template.
 
@@ -102,43 +102,41 @@ def compose(
 
         svg_image[0].attrib['style'] = "overflow:visible;opacity:100;"
 
-    if output is not None:
-        output_file_path = output
-    else:
-        output_file_path = tempfile.mktemp(dir=str(Path.cwd()), suffix='.webp')
+    output_file_path = output
+    svg_file_name = str(output_file_path).replace(output_file_path.suffix, '.svg')
 
-    temporary_svg_file = tempfile.NamedTemporaryFile(suffix='.svg')
+    with open(svg_file_name, 'wb') as svg_file:
 
-    try:
-        svg.write(temporary_svg_file)
-    except etree.SerialisationError as err:
-        if verbose:
-            logger.exception(Fore.RED + err)
-            logger.exception(Style.RESET_ALL)
-        else:
-            logger.error(Fore.RED + "Error generating: " +
-                         Fore.CYAN + "{}".format(svg_temp_name))
+        try:
+            svg.write(svg_file)
+        except etree.SerialisationError as err:
+            if verbose:
+                logger.exception(Fore.RED + err)
+                logger.exception(Style.RESET_ALL)
+            else:
+                logger.error(Fore.RED + "Error generating: " +
+                             Fore.CYAN + "{}".format(svg_temp_name))
 
-    # Convert svg to wepb
+        # Convert svg to wepb
 
-    image_resolution = 512
-    with wand_img.Image(filename=temporary_svg_file.name, resolution=image_resolution) as image:
+        image_resolution = 512
+        with wand_img.Image(filename=svg_file.name, resolution=image_resolution) as image:
 
-        library.MagickSetOption(image.wand, 'webp:lossless', 'true')
-        library.MagickSetOption(image.wand, 'webp:alpha-quality', '100')
-        library.MagickSetOption(image.wand, 'webp:emulate-jpeg-size', 'true')
-        library.MagickSetOption(image.wand, 'webp:method', '6')
+            library.MagickSetOption(image.wand, 'webp:lossless', 'true')
+            library.MagickSetOption(image.wand, 'webp:alpha-quality', '100')
+            library.MagickSetOption(image.wand, 'webp:emulate-jpeg-size', 'true')
+            library.MagickSetOption(image.wand, 'webp:method', '6')
 
-        image.compression_quality = 99
-        image.adaptive_resize(1500, 1500)
+            image.compression_quality = 99
+            image.adaptive_resize(1500, 1500)
 
-        if options.unsharp:
-            image.unsharp_mask(radius=0, sigma=1, amount=1, threshold=0)
-            image.adaptive_sharpen(0.5, 2.5)
+            if options.unsharp:
+                image.unsharp_mask(radius=0, sigma=1, amount=1, threshold=0)
+                image.adaptive_sharpen(0.5, 2.5)
 
-        if options.override_images and output_file_path.exists():
-            output_file_path.unlink()
+            if options.override_images and output_file_path.exists():
+                output_file_path.unlink()
 
-        image.save(filename=str(output_file_path))
+            image.save(filename=str(output_file_path))
 
-        return Path(output_file_path)
+            return Path(output_file_path)
