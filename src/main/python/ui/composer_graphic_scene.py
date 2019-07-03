@@ -1,10 +1,7 @@
-from gettext import gettext as _
+from PyQt5.QtCore import Qt, pyqtSignal, QPointF
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QErrorMessage
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QErrorMessage
-
-from models.errors import ReadOnlyError
 from models.template import Template, LayerType, Position, Size, NoBaseSvgError
 from ui.common import BACKGROUND, PRESENTATION, PRIMARY, SECONDARY
 
@@ -67,20 +64,25 @@ class ComposerGraphicScene(QGraphicsScene):
                           QGraphicsPixmapItem.ItemIsSelectable |
                           QGraphicsPixmapItem.ItemSendsGeometryChanges)
 
-            item.setPos(ev.pos())
-
             if origin == BACKGROUND:
                 item.setZValue(-1)
 
-            self.addItem(item)
+            if origin != BACKGROUND:
+                # Scale to fit the scene.
+                scene_rect = self.sceneRect()
+                scene_width = scene_rect.width()
+                item_width = item.boundingRect().width()
+                factor = scene_width / (2 * item_width)
+                item.setScale(factor)
 
-            # if origin != BACKGROUND:
-            #     # Scale to fit the scene.
-            #     scene_rect = self.sceneRect()
-            #     scene_width = scene_rect.width()
-            #     item_width = item.boundingRect().width()
-            #     factor = 0.5 * item_width / scene_width
-            #     item.setScale(factor)
+                dx = item.boundingRect().width() * factor / 2
+                dy = item.boundingRect().height() * factor / 2
+
+                scene_pos = ev.scenePos()
+
+                item.setPos(QPointF(abs(scene_pos.x() - dx), abs(scene_pos.y() - dy)))
+
+            self.addItem(item)
 
             self.parent().fitInView(self.sceneRect(), Qt.KeepAspectRatio)
 
