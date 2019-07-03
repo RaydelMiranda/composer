@@ -133,6 +133,10 @@ class Composition:
 
         path_to_webp = self.render(options, root_dir)
 
+        # Save presentation
+        presentation_image_path = Path(self.presentation_item.image_path)
+        presentation_image_path.rename(root_dir.joinpath(presentation_image_path.name))
+
         return path_to_webp
 
 
