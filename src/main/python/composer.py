@@ -29,7 +29,7 @@ class ComposeWorker(QObject):
     def run(self):
         for composition in self._compositions:
             if composition.is_valid():
-                path = composition.render(self._options, output_path=self._output_path)
+                path = composition.save(self._options)
                 self.composition_ready.emit(str(path))
         self.composition_finished.emit()
 

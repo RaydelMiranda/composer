@@ -12,6 +12,7 @@ from wand.api import library
 
 from composer_core.composer.common import CompositionItem
 from composer_core.composer.compose import compose
+from composer_core.config import settings
 from models.template import Template, LayerType
 from ui.common import GenerationOptions
 
@@ -103,6 +104,37 @@ class Composition:
     def secondary_items(self) -> [CompositionItem]:
         return self.filter_items(lambda x: x.layer.type == LayerType.SECONDARY)
 
+    def save(self, options: GenerationOptions) -> Path:
+        """
+        Method that creates a folder structure ready for sync to s3.
+
+        Such folder structure is as follow:
+
+        - <product_code>
+            | - <composition - code>.webp
+            | - <composition - code>.svg
+            | - presentation.png
+            | - background.png
+
+        The root folder for such structure might exist, due a previously saved composition of
+        the same product, the same might happen with the background, if that's the case,
+        the results are merged.
+
+        :param options: Some options passed to the function that actually generates images.
+        """
+
+        # Get the root folder name.
+        main_product_name = despeluze_item_name(self.primary_item)
+        main_product_name = main_product_name.split('_')[0]
+        root_dir = Path(settings.output_path).joinpath(main_product_name)
+
+        # Try to crete the root dir, if exists, it is ok.
+        root_dir.mkdir(exist_ok=True)
+
+        path_to_webp = self.render(options, root_dir)
+
+        return path_to_webp
+
 
 class CompositionBuilder:
     """
@@ -186,55 +218,55 @@ def despeluze_item_name(item: CompositionItem) -> str:
 
 def compute_output_name(
         composition: Composition, extension='webp',
-        flower_code_pattern=r'.*',
-        background_code_pattern='.*',
-        bundle_code_pattern='.*'):
+        primary_product_code_pattern=r'.*',
+        presentation_code_pattern='.*',
+        secondary_product_code_pattern='.*'):
     # Process main product.
-    flower_name = despeluze_item_name(composition.primary_item)
-    flower_name = flower_name.split('_')[0]
-    flower_match = re.match(flower_code_pattern, flower_name)
+    main_product_name = despeluze_item_name(composition.primary_item)
+    main_product_name = main_product_name.split('_')[0]
+    main_product_match = re.match(primary_product_code_pattern, main_product_name)
 
-    if flower_match:
-        flower_name = flower_match.group()
+    if main_product_match:
+        main_product_name = main_product_match.group()
     else:
-        flower_name = ''
+        main_product_name = ''
         logger.warning(Fore.CYAN + "Warning: pattern " +
-                       Fore.YELLOW + flower_code_pattern +
-                       Fore.CYAN + "do not match " + Fore.GREEN + flower_name)
+                       Fore.YELLOW + primary_product_code_pattern +
+                       Fore.CYAN + "do not match " + Fore.GREEN + main_product_name)
         logger.warning(Style.RESET_ALL)
 
     # Do the same for background
-    vase_name = despeluze_item_name(composition.presentation_item)
-    vase_name_match = re.match(background_code_pattern, vase_name)
+    presentation_name = despeluze_item_name(composition.presentation_item)
+    presentation_name_match = re.match(presentation_code_pattern, presentation_name)
 
-    if vase_name_match:
-        vase_name = vase_name_match.group()
+    if presentation_name_match:
+        presentation_name = presentation_name_match.group()
     else:
-        vase_name = ''
+        presentation_name = ''
         logger.warning(Fore.CYAN + "Warning: pattern " +
-                       Fore.YELLOW + background_code_pattern +
-                       Fore.CYAN + "do not match " + Fore.GREEN + vase_name)
+                       Fore.YELLOW + presentation_code_pattern +
+                       Fore.CYAN + "do not match " + Fore.GREEN + presentation_name)
         logger.warning(Style.RESET_ALL)
 
     # And for secondary_items_names.
     secondary_items_names = [despeluze_item_name(item) for item in composition.secondary_items]
     secondary_items_names = [item_name.split('_')[0] for item_name in secondary_items_names]
 
-    _bundles = []
+    _secondary_products = []
 
     for secondary_item in secondary_items_names:
-        match = re.match(bundle_code_pattern, secondary_item)
+        match = re.match(secondary_product_code_pattern, secondary_item)
         if match:
-            _bundles.append(match.group())
+            _secondary_products.append(match.group())
         else:
             logger.warning(Fore.CYAN + "Warning: pattern " +
-                           Fore.YELLOW + bundle_code_pattern +
+                           Fore.YELLOW + secondary_product_code_pattern +
                            Fore.CYAN + "do not match " + Fore.GREEN + secondary_item)
             logger.warning(Style.RESET_ALL)
 
     name_components = filter(
         lambda x: x != '',
-        [flower_name, vase_name, "_".join(_bundles)]
+        [main_product_name, presentation_name, "_".join(_secondary_products)]
     )
 
     return f"{'_'.join(name_components)}.{extension}"
