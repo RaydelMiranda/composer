@@ -7,7 +7,7 @@ from collections import defaultdict
 from ctypes import c_void_p, c_wchar_p
 from gettext import gettext as _
 from pathlib import Path
-from typing import Generator, Callable
+from typing import Generator, Callable, Any, Union
 
 from colorama import Fore, Style
 from wand.api import library
@@ -144,35 +144,55 @@ class Composition:
         path_to_webp = self.render(options, main_product_dir)
 
         # Save presentation
+        self.save_presentation(root_dir)
+
+        # Save background
+        self.save_background(root_dir)
+
+        # Save clipping of the product and secondary items.
+        clipping_dir = self.save_clipping(clipping_dir, root_dir)
+        self.save_secondary_items(clipping_dir)
+
+        return path_to_webp
+
+    def save_presentation(self, root_dir: Path):
+
         presentation_image_path = Path(self.presentation_item.image_path)
         presentations_dir = root_dir.joinpath(PRESENTATION)
         presentations_dir.mkdir(exist_ok=True)
-        full_path = presentations_dir.joinpath(presentation_image_path.name)
+
+        presentation_parent_folder = presentation_image_path.name.replace(presentation_image_path.suffix, "")
+        presentation_parent_folder = presentations_dir.joinpath(presentation_parent_folder)
+        presentation_parent_folder.mkdir(exist_ok=True)
+
+        full_path = presentation_parent_folder.joinpath(presentation_image_path.name)
+
         if not full_path.exists():
             shutil.copy(presentation_image_path, full_path)
 
-        # Save background
-        background_path = Path(self._template.background)
-        backgrounds_dir = root_dir.joinpath(BACKGROUND)
-        backgrounds_dir.mkdir(exist_ok=True)
-        full_path = backgrounds_dir.joinpath(background_path.name)
-        if not full_path.exists():
-            shutil.copy(background_path, full_path)
+    def save_secondary_items(self, clipping_dir: Path):
+        for item in self.secondary_items:
+            secondary_product_clipping = item.image_path
+            full_path = clipping_dir.joinpath(secondary_product_clipping.name)
+            if not full_path.exists():
+                shutil.copy(secondary_product_clipping, full_path)
 
-        # Save clipping of the product and secondary items.
+    def save_clipping(self, clipping_dir: Path, root_dir: Path):
         main_product_clipping = self.primary_item.image_path
         clipping_dir = root_dir.joinpath(clipping_dir)
         clipping_dir.mkdir(exist_ok=True)
         full_path = clipping_dir.joinpath(main_product_clipping.name)
         if not full_path.exists():
             shutil.copy(main_product_clipping, full_path)
+        return clipping_dir
 
-        for item in self.secondary_items:
-            secondary_product_clipping = item.image_path
-            full_path = clipping_dir.joinpath(secondary_product_clipping.name)
-            if not full_path.exists():
-                shutil.copy(secondary_product_clipping, full_path)
-        return path_to_webp
+    def save_background(self, root_dir: Path):
+        background_path = Path(self._template.background)
+        backgrounds_dir = root_dir.joinpath(BACKGROUND)
+        backgrounds_dir.mkdir(exist_ok=True)
+        full_path = backgrounds_dir.joinpath(background_path.name)
+        if not full_path.exists():
+            shutil.copy(background_path, full_path)
 
 
 class CompositionBuilder:
