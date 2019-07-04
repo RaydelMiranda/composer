@@ -8,8 +8,12 @@ class S3Sync:
     Class that holds the operations need for synchronize buckets/
     """
 
-    @staticmethod
-    def sync(source: str, dest: str) -> [str]:
+    def __init__(self, endpoint_url=None):
+        self._endpoint_url = endpoint_url
+        self._s3_access_key = settings.s3_access_key
+        self._s3_secret_key = settings.s3_secret_key
+
+    def sync(self, source: str, dest: str) -> [str]:
         """
         Sync source to dest, this means that all elements existing in
         source that not exists in dest will be copied to dest.
@@ -24,8 +28,7 @@ class S3Sync:
 
         connection = boto3.client('s3')
 
-    @staticmethod
-    def list_objects(bucket: str) -> [dict]:
+    def list_objects(self, bucket: str) -> [dict]:
         """
         List all objects for the given bucket.
 
@@ -50,9 +53,9 @@ class S3Sync:
 
         s3 = boto3.client(
             's3',
-            endpoint_url='http://localhost:4572',
-            aws_access_key_id=settings.s3_access_key,
-            aws_secret_access_key=settings.s3_secret_key,
+            endpoint_url=self._endpoint_url,
+            aws_access_key_id=self._s3_access_key,
+            aws_secret_access_key=self._s3_secret_key,
             region_name='us-east-1'
         )
 
@@ -60,6 +63,7 @@ class S3Sync:
 
 
 if __name__ == '__main__':
-    contents = S3Sync.list_objects("COMPOSITIONS")
+    sync = S3Sync(endpoint_url='http://localhost:4572')
+    contents = sync.list_objects("COMPOSITIONS")
     for elem in contents:
         print(elem)
