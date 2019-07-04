@@ -1,3 +1,5 @@
+import shutil
+
 import itertools
 import logging
 import re
@@ -14,7 +16,7 @@ from composer_core.composer.common import CompositionItem
 from composer_core.composer.compose import compose
 from composer_core.config import settings
 from models.template import Template, LayerType
-from ui.common import GenerationOptions
+from ui.common import GenerationOptions, PRESENTATION, BACKGROUND
 
 logger = logging.Logger(__name__)
 
@@ -123,20 +125,53 @@ class Composition:
         :param options: Some options passed to the function that actually generates images.
         """
 
+        line_products_folder_name = "LINE-PRODUCTS"
+        clipping_dir = "CLIPPING"
+
         # Get the root folder name.
+        root_dir = Path(settings.output_path)
+
         main_product_name = despeluze_item_name(self.primary_item)
         main_product_name = main_product_name.split('_')[0]
-        root_dir = Path(settings.output_path).joinpath(main_product_name)
+        main_product_dir = root_dir.joinpath(line_products_folder_name).joinpath(main_product_name)
 
         # Try to crete the root dir, if exists, it is ok.
-        root_dir.mkdir(exist_ok=True)
+        root_dir.joinpath(line_products_folder_name).mkdir(exist_ok=True)
+        main_product_dir.mkdir(exist_ok=True)
 
-        path_to_webp = self.render(options, root_dir)
+        # Render composition to the desired folder. render method will also save the
+        # svg file corresponding to this composition.
+        path_to_webp = self.render(options, main_product_dir)
 
         # Save presentation
         presentation_image_path = Path(self.presentation_item.image_path)
-        presentation_image_path.rename(root_dir.joinpath(presentation_image_path.name))
+        presentations_dir = root_dir.joinpath(PRESENTATION)
+        presentations_dir.mkdir(exist_ok=True)
+        full_path = presentations_dir.joinpath(presentation_image_path.name)
+        if not full_path.exists():
+            shutil.copy(presentation_image_path, full_path)
 
+        # Save background
+        background_path = Path(self._template.background)
+        backgrounds_dir = root_dir.joinpath(BACKGROUND)
+        backgrounds_dir.mkdir(exist_ok=True)
+        full_path = backgrounds_dir.joinpath(background_path.name)
+        if not full_path.exists():
+            shutil.copy(background_path, full_path)
+
+        # Save clipping of the product and secondary items.
+        main_product_clipping = self.primary_item.image_path
+        clipping_dir = root_dir.joinpath(clipping_dir)
+        clipping_dir.mkdir(exist_ok=True)
+        full_path = clipping_dir.joinpath(main_product_clipping.name)
+        if not full_path.exists():
+            shutil.copy(main_product_clipping, full_path)
+
+        for item in self.secondary_items:
+            secondary_product_clipping = item.image_path
+            full_path = clipping_dir.joinpath(secondary_product_clipping.name)
+            if not full_path.exists():
+                shutil.copy(secondary_product_clipping, full_path)
         return path_to_webp
 
 
