@@ -181,7 +181,12 @@ class Composition:
         main_product_clipping = self.primary_item.image_path
         clipping_dir = root_dir.joinpath(clipping_dir)
         clipping_dir.mkdir(exist_ok=True)
-        full_path = clipping_dir.joinpath(main_product_clipping.name)
+
+        clipping_parent_folder = main_product_clipping.name.replace(main_product_clipping.suffix, "")
+        clipping_parent_folder = clipping_dir.joinpath(clipping_parent_folder)
+        clipping_parent_folder.mkdir(exist_ok=True)
+
+        full_path = clipping_parent_folder.joinpath(main_product_clipping.name)
         if not full_path.exists():
             shutil.copy(main_product_clipping, full_path)
         return clipping_dir
