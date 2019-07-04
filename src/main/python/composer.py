@@ -105,9 +105,20 @@ class Composer(QMainWindow):
             self.__settings.set_config_value('upload_to_s3', "True")
             self.ui.upload_to_s3.setChecked(True)
 
-        self.ui.access_key.setText(self.__settings.s3_access_key)
-        self.ui.secret_access_key.setText(self.__settings.s3_secret_key)
-        self.ui.bucket_name.setText(self.__settings.bucket_name)
+        try:
+            self.ui.access_key.setText(self.__settings.s3_access_key)
+        except NoOptionError as err:
+            self.__settings.set_config_value('s3_access_key', "")
+
+        try:
+            self.ui.secret_access_key.setText(self.__settings.s3_secret_key)
+        except NoOptionError as err:
+            self.__settings.set_config_value('s3_secret_key', "")
+
+        try:
+            self.ui.bucket_name.setText(self.__settings.bucket_name)
+        except NoOptionError as err:
+            self.__settings.set_config_value('bucket_name', "")
 
     def __settings_changed(self, *args, **kwargs):
         pwd = Path.cwd()
