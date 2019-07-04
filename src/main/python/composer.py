@@ -1,3 +1,4 @@
+from configparser import NoOptionError
 from gettext import gettext as _
 from pathlib import Path
 
@@ -98,7 +99,11 @@ class Composer(QMainWindow):
             self.ui.output_path.setText("")
 
         # S3 settings.
-        self.ui.upload_to_s3.setChecked(self.__settings.upload_to_s3)
+        try:
+            self.ui.upload_to_s3.setChecked(self.__settings.upload_to_s3)
+        except NoOptionError as err:
+            self.__settings.set_config_value('upload_to_s3', "True")
+            self.ui.upload_to_s3.setChecked(True)
 
         self.ui.access_key.setText(self.__settings.s3_access_key)
         self.ui.secret_access_key.setText(self.__settings.s3_secret_key)
