@@ -71,6 +71,14 @@ class ConfigHelper(object):
             self.__config.write(config_file)
 
     @property
+    def s3_access_key(self):
+        return self.get_config('s3_access_key')
+
+    @property
+    def s3_secret_key(self):
+        return self.get_config('s3_secret_key')
+
+    @property
     def main_products_path(self):
         return self.get_config('main_products_path')
 
