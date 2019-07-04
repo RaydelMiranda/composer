@@ -7,7 +7,7 @@ from pathlib import Path
 
 class S3Sync:
     """
-    Class that holds the operations need for synchronize buckets/
+    Class that holds the operations needed for synchronize local dirs to a given bucket.
     """
 
     def __init__(self, endpoint_url=None, *args, **kwargs):
@@ -36,10 +36,15 @@ class S3Sync:
         :return: A [str] containing the keys or filenames of those elements that where copied.
         """
 
+        # This function is idempotent, if the bucket exist just get returned.
+        # So it is perfect for situations where we want to make sure a
+        # bucket with certain name exists.
+        self._s3.create_bucket(Bucket=dest)
+
         paths = self.list_source_objects(source_folder=source)
         objects = self.list_bucket_objects(dest)
 
-        # Getting the keys and ordering in order to perform binary search
+        # Getting the keys and ordering to perform binary search
         # each time we want to check if any paths is already there.
         object_keys = [obj['Key'] for obj in objects]
         object_keys.sort()
@@ -62,7 +67,7 @@ class S3Sync:
         Example of a single object.
 
         {
-            'Key': 'CR02-R009-1/CR02-R009-1_CR02-F018-4.webp',
+            'Key': 'example/example.txt',
             'LastModified': datetime.datetime(2019, 7, 4, 13, 50, 34, 893000, tzinfo=tzutc()),
             'ETag': '"b11564415be7f58435013b414a59ae5c"',
             'Size': 115280,

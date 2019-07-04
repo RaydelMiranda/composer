@@ -46,6 +46,8 @@ if not os.path.exists(CONFIG_FILE):
     config.set('composer', 'presentations_path', 'presentations')
     config.set('composer', 'backgrounds_path', 'backgrounds')
 
+    config.set('composer', 'upload_to_s3', 'True')
+
     if not os.path.exists(CONF_DIR):
         os.mkdir(CONF_DIR)
 
@@ -123,6 +125,10 @@ class ConfigHelper(object):
         return self.get_config_boolean('override_target_files')
 
     @property
+    def upload_to_s3(self):
+        return self.get_config_boolean('upload_to_s3')
+
+    @property
     def output_path(self):
         return self.get_config('output_path')
 
@@ -137,6 +143,13 @@ class ConfigHelper(object):
     @property
     def inner_config_obj(self):
         return self.__config
+
+    @property
+    def bucket_name(self):
+        try:
+            return self.get_config('bucket_name')
+        except configparser.NoOptionError as err:
+            return None
 
 
 settings = ConfigHelper(config)

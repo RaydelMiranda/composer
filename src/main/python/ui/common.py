@@ -12,4 +12,4 @@ POSSIBLE_ORIGINS = [
 
 IMAGE_TYPES = ['svg', 'png', 'jpg', 'jpeg']
 
-GenerationOptions = namedtuple('GenerationOptions', 'unsharp, override_images')
+GenerationOptions = namedtuple('GenerationOptions', 'unsharp, override_images, upload_to_s3, bucket_name')

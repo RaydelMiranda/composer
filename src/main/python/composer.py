@@ -4,6 +4,7 @@ from pathlib import Path
 from PyQt5.QtCore import pyqtSlot, Qt, QThread, pyqtSignal, QObject
 from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit, QErrorMessage, QMessageBox
 
+from _s3.sync import S3Sync
 from composer_core.composer.composition import CompositionBuilder, Composition
 from composer_core.config import settings
 from models.template import OutputDirError, Template
@@ -18,8 +19,12 @@ class ComposeWorker(QObject):
     # of the resulting composition.
     composition_ready = pyqtSignal(str)
     composition_finished = pyqtSignal()
+    composition_uploading_to_s3 = pyqtSignal()
+    composition_uploaded_to_s3 = pyqtSignal()
 
-    def __init__(self, compositions: [Composition], options: GenerationOptions, output_path: Path):
+    def __init__(self,
+                 compositions: [Composition],
+                 options: GenerationOptions, output_path: Path):
         super(ComposeWorker, self).__init__()
 
         self._compositions = compositions
@@ -31,6 +36,15 @@ class ComposeWorker(QObject):
             if composition.is_valid():
                 path = composition.save(self._options)
                 self.composition_ready.emit(str(path))
+
+        if self._options.upload_to_s3:
+            self.composition_uploading_to_s3.emit()
+
+            sync = S3Sync()
+            sync.sync(str(self._output_path), settings.bucket_name)
+
+            self.composition_uploaded_to_s3.emit()
+
         self.composition_finished.emit()
 
 
@@ -44,6 +58,8 @@ class Composer(QMainWindow):
         self.__settings = settings
 
         self.ui.output_path.editingFinished.connect(self.on_output_path_changed)
+        self.ui.bucket_name.textChanged.connect(self.on_bucket_name_changed)
+        self.ui.upload_to_s3.clicked.connect(self.on_upload_to_s3_clicked)
 
         self.__prepare_list_views()
         self.__prepare_graphic_view()
@@ -81,6 +97,13 @@ class Composer(QMainWindow):
         except OutputDirError as err:
             self.ui.output_path.setText("")
 
+        # S3 settings.
+        self.ui.upload_to_s3.setChecked(self.__settings.upload_to_s3)
+
+        self.ui.access_key.setText(self.__settings.s3_access_key)
+        self.ui.secret_access_key.setText(self.__settings.s3_secret_key)
+        self.ui.bucket_name.setText(self.__settings.bucket_name)
+
     def __settings_changed(self, *args, **kwargs):
         pwd = Path.cwd()
 
@@ -92,6 +115,9 @@ class Composer(QMainWindow):
 
         self.__settings.set_config_value("unsharp", str(self.ui.apply_unsharp.isChecked()))
         self.__settings.set_config_value("override_target_files", str(self.ui.override_images.isChecked()))
+
+        self.__settings.set_config_value("bucket_name", self.ui.bucket_name.text())
+        self.__settings.set_config_value("upload_to_s3", str(self.ui.upload_to_s3.isChecked()))
 
         self.__settings.save()
 
@@ -142,6 +168,15 @@ class Composer(QMainWindow):
         return items[0]
 
     @pyqtSlot()
+    def busy_mode(self):
+        self.ui.progressBar.setMaximum(0)
+        self.ui.progressBar.setMinimum(0)
+
+    @pyqtSlot()
+    def normal_mode(self):
+        self.ui.progressBar.setMaximum(100)
+
+    @pyqtSlot()
     def on_mproducts_path_select_button_clicked(self, *args, **kwargs):
         path = self.__collect_resource_path(
             self.ui.main_products_path, _("Select main product's images directory.")
@@ -177,6 +212,14 @@ class Composer(QMainWindow):
             message = QErrorMessage(self)
             message.showMessage(str(err))
             self.ui.output_path.clear()
+
+    @pyqtSlot()
+    def on_bucket_name_changed(self):
+        self.__settings_changed()
+
+    @pyqtSlot()
+    def on_upload_to_s3_clicked(self):
+        self.__settings_changed()
 
     @pyqtSlot()
     def on_generate_template_button_clicked(self):
@@ -319,12 +362,14 @@ class Composer(QMainWindow):
 
         options = GenerationOptions(
             unsharp=self.ui.apply_unsharp.isChecked(),
-            override_images=self.ui.override_images.isChecked()
+            override_images=self.ui.override_images.isChecked(),
+            upload_to_s3=self.ui.upload_to_s3.isChecked(),
+            bucket_name=self.ui.bucket_name.text()
         )
 
         self.ui.progressBar.setValue(0)
+        self.ui.progressBar.setMinimum(0)
         self.ui.progressBar.setMaximum(len(compositions))
-        self.ui.progressBar.setVisible(True)
 
         self._composition_thread = QThread()
         self._composition_worker = ComposeWorker(compositions, options, output_dir)
@@ -333,6 +378,9 @@ class Composer(QMainWindow):
         self._composition_worker.composition_ready.connect(self.on_composition_ready)
         self._composition_worker.composition_finished.connect(self._composition_thread.quit)
         self._composition_worker.composition_finished.connect(self.on_generation_complete)
+
+        self._composition_worker.composition_uploading_to_s3.connect(self.busy_mode)
+        self._composition_worker.composition_uploaded_to_s3.connect(self.normal_mode)
 
         self._composition_thread.started.connect(self._composition_worker.run)
 
