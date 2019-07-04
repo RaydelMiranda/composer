@@ -1,7 +1,7 @@
 
 # Composer
 
-A simple application for help with image generation of the Villaflores store.
+A no so simple application for help with image generation of the Villaflores store.
 
 
 ### Notes
