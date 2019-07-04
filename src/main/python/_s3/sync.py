@@ -1,6 +1,8 @@
-import boto3
+from bisect import bisect_left
 
+import boto3
 from composer_core.config import settings
+from pathlib import Path
 
 
 class S3Sync:
@@ -8,10 +10,18 @@ class S3Sync:
     Class that holds the operations need for synchronize buckets/
     """
 
-    def __init__(self, endpoint_url=None):
+    def __init__(self, endpoint_url=None, *args, **kwargs):
         self._endpoint_url = endpoint_url
         self._s3_access_key = settings.s3_access_key
         self._s3_secret_key = settings.s3_secret_key
+
+        self._s3 = boto3.client(
+            's3',
+            endpoint_url=self._endpoint_url,
+            aws_access_key_id=self._s3_access_key,
+            aws_secret_access_key=self._s3_secret_key,
+            *args, **kwargs
+        )
 
     def sync(self, source: str, dest: str) -> [str]:
         """
@@ -26,9 +36,23 @@ class S3Sync:
         :return: A [str] containing the keys or filenames of those elements that where copied.
         """
 
-        connection = boto3.client('s3')
+        paths = self.list_source_objects(source_folder=source)
+        objects = self.list_bucket_objects(dest)
 
-    def list_objects(self, bucket: str) -> [dict]:
+        # Getting the keys and ordering in order to perform binary search
+        # each time we want to check if any paths is already there.
+        object_keys = [obj['Key'] for obj in objects]
+        object_keys.sort()
+        object_keys_length = len(object_keys)
+
+        for path in paths:
+            # Binary search.
+            index = bisect_left(object_keys, path)
+            if index == object_keys_length:
+                # If path not found in object_keys, it has to be sync-ed.
+                self._s3.upload_file(str(Path(source).joinpath(path)),  Bucket=dest, Key=path)
+
+    def list_bucket_objects(self, bucket: str) -> [dict]:
         """
         List all objects for the given bucket.
 
@@ -50,20 +74,54 @@ class S3Sync:
         }
 
         """
+        try:
+            contents = self._s3.list_objects(Bucket=bucket)['Contents']
+        except KeyError:
+            # No Contents Key, empty bucket.
+            return []
+        else:
+            return contents
 
-        s3 = boto3.client(
-            's3',
-            endpoint_url=self._endpoint_url,
-            aws_access_key_id=self._s3_access_key,
-            aws_secret_access_key=self._s3_secret_key,
-            region_name='us-east-1'
-        )
+    @staticmethod
+    def list_source_objects(source_folder: str) -> [str]:
+        """
+        :param source_folder:  Root folder for resources you want to list.
+        :return: A [str] containing relative names of the files.
 
-        return s3.list_objects(Bucket=bucket)['Contents']
+        Example:
+
+            /tmp
+                - example
+                    - file_1.txt
+                    - some_folder
+                        - file_2.txt
+
+            >>> sync.list_source_objects("/tmp/example")
+            ['file_1.txt', 'some_folder/file_2.txt']
+
+        """
+
+        path = Path(source_folder)
+
+        paths = []
+
+        for file_path in path.rglob("*"):
+            if file_path.is_dir():
+                continue
+            str_file_path = str(file_path)
+            str_file_path = str_file_path.replace(f'{str(path)}/', "")
+            paths.append(str_file_path)
+
+        return paths
 
 
 if __name__ == '__main__':
+    bucket_name = "COMPOSITIONS_1"
+
     sync = S3Sync(endpoint_url='http://localhost:4572')
-    contents = sync.list_objects("COMPOSITIONS")
-    for elem in contents:
-        print(elem)
+    sync.sync("/home/miranda/.projects/qpy_image_composer/test_data/output", bucket_name)
+
+    result = sync.list_bucket_objects(bucket_name)
+
+    for elem in result:
+        print(elem['Key'])
