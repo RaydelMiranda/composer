@@ -30,7 +30,7 @@ config = configparser.ConfigParser()
 if not os.path.exists(CONFIG_FILE):
     config.add_section('composer')
     config.set('composer', 'main_product_code_pattern', '.*')
-    config.set('composer', 'presentation_code_pattern', '.*')
+    config.set('composer', 'presentation_code_pattern', '(\w+-)([\w-]+)')
     config.set('composer', 'secondary_product_code_pattern', '.*')
     config.set('composer', 'num_threads', '5')
     config.set('composer', 'output_geometry', '568x568')
@@ -135,6 +135,10 @@ class ConfigHelper(object):
     @property
     def presentations_path(self):
         return self.get_config('presentations_path')
+
+    @property
+    def presentation_code_pattern(self):
+        return self.get_config('presentation_code_pattern')
 
     @property
     def backgrounds_path(self):

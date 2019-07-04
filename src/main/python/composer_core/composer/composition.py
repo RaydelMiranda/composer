@@ -53,7 +53,7 @@ class Composition:
         :return: The path of the resulting image.
         """
 
-        composition_file_name = compute_output_name(self)
+        composition_file_name = compute_output_name(self, presentation_code_pattern=settings.presentation_code_pattern)
         output_file_name = output_path.joinpath(composition_file_name)
 
         return compose(self._items, self._template, options, output=output_file_name)
@@ -304,7 +304,7 @@ def compute_output_name(
     presentation_name_match = re.match(presentation_code_pattern, presentation_name)
 
     if presentation_name_match:
-        presentation_name = presentation_name_match.group()
+        presentation_name = presentation_name_match.groups()[-1]
     else:
         presentation_name = ''
         logger.warning(Fore.CYAN + "Warning: pattern " +
