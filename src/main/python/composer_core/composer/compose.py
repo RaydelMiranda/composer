@@ -20,7 +20,7 @@ This file is part of "VillaFlores Product Creator".
 import base64
 import logging
 import os
-import tempfile
+from configparser import NoOptionError
 from ctypes import c_void_p, c_wchar_p
 from gettext import gettext as _
 
@@ -35,6 +35,7 @@ from wand.api import library
 # Initialize colorama.
 # -----------------------------------------------------------------------------
 from composer_core.composer.common import CompositionItem
+from composer_core.config import settings
 from models.template import Template
 from ui.common import GenerationOptions
 
@@ -118,8 +119,13 @@ def compose(
                              Fore.CYAN + "{}".format(svg_temp_name))
 
         # Convert svg to wepb
+        try:
+            image_resolution = settings.inner_config_obj.getint('composer', 'image_resolution')
+        except NoOptionError as err:
+            image_resolution = 512
+            settings.inner_config_obj['composer']['image_resolution'] = str(image_resolution)
+            settings.save()
 
-        image_resolution = 512
         with wand_img.Image(filename=svg_file.name, resolution=image_resolution) as image:
 
             library.MagickSetOption(image.wand, 'webp:lossless', 'true')
@@ -128,7 +134,7 @@ def compose(
             library.MagickSetOption(image.wand, 'webp:method', '6')
 
             image.compression_quality = 99
-            image.adaptive_resize(1500, 1500)
+            image.adaptive_resize(settings.adaptive_resize_width, settings.adaptive_resize_height)
 
             if options.unsharp:
                 image.unsharp_mask(radius=0, sigma=1, amount=1, threshold=0)

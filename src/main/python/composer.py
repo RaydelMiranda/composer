@@ -1,4 +1,5 @@
 from configparser import NoOptionError
+from contextlib import contextmanager
 from gettext import gettext as _
 from pathlib import Path
 
@@ -13,6 +14,13 @@ from ui.common import PRIMARY, SECONDARY, BACKGROUND, PRESENTATION, GenerationOp
 from ui.composer_graphic_scene import ComposerGraphicScene
 from ui.imagecomposer import Ui_Imagecomposer
 from ui.models import ResourceModel
+
+
+@contextmanager
+def disconnected_signal(control, signal_name):
+    pass
+
+
 
 
 class ComposeWorker(QObject):
@@ -57,10 +65,17 @@ class Composer(QMainWindow):
         self.ui = Ui_Imagecomposer()
         self.ui.setupUi(self)
         self.__settings = settings
+        self.__loading_settings = False
 
         self.ui.output_path.editingFinished.connect(self.on_output_path_changed)
-        self.ui.bucket_name.textChanged.connect(self.on_bucket_name_changed)
-        self.ui.upload_to_s3.clicked.connect(self.on_upload_to_s3_clicked)
+        self.ui.bucket_name.textChanged.connect(self.__settings_changed)
+        self.ui.upload_to_s3.clicked.connect(self.__settings_changed)
+
+        self.ui.secret_access_key.textChanged.connect(self.__settings_changed)
+        self.ui.access_key.textChanged.connect(self.__settings_changed)
+
+        self.ui.image_result_width.valueChanged.connect(self.__settings_changed)
+        self.ui.image_result_height.valueChanged.connect(self.__settings_changed)
 
         self.__prepare_list_views()
         self.__prepare_graphic_view()
@@ -76,6 +91,9 @@ class Composer(QMainWindow):
         self.ui.override_images.clicked.connect(self.__settings_changed)
 
     def __load_settings(self):
+
+        self.__loading_settings = True
+
         # Resource settings.
         self.ui.main_products_path.setText(str(Path(settings.main_products_path).absolute()))
         self.ui.secondary_products_path.setText(str(Path(settings.secondary_products_path).absolute()))
@@ -91,6 +109,10 @@ class Composer(QMainWindow):
         self.ui.sproducts_view_model.setRootPath(self.ui.secondary_products_path.text())
         self.ui.presentations_view_model.setRootPath(self.ui.presentations_path.text())
         self.ui.backgrounds_view_model.setRootPath(self.ui.backgrounds_path.text())
+
+        # Image result settings.
+        self.ui.image_result_width.setValue(self.__settings.adaptive_resize_width)
+        self.ui.image_result_height.setValue(self.__settings.adaptive_resize_height)
 
         # Setting output dir.
         try:
@@ -120,7 +142,13 @@ class Composer(QMainWindow):
         except NoOptionError as err:
             self.__settings.set_config_value('bucket_name', "")
 
+        self.__loading_settings = False
+
     def __settings_changed(self, *args, **kwargs):
+
+        if self.__loading_settings:
+            return
+
         pwd = Path.cwd()
 
         self.__settings.set_config_value("output_path", self.ui.output_path.text() or f'{pwd}')
@@ -134,6 +162,12 @@ class Composer(QMainWindow):
 
         self.__settings.set_config_value("bucket_name", self.ui.bucket_name.text())
         self.__settings.set_config_value("upload_to_s3", str(self.ui.upload_to_s3.isChecked()))
+
+        self.__settings.set_config_value("s3_access_key", self.ui.access_key.text())
+        self.__settings.set_config_value("s3_secret_key", self.ui.secret_access_key.text())
+
+        self.__settings.set_config_value("adaptive_resize_width", str(self.ui.image_result_width.value()))
+        self.__settings.set_config_value("adaptive_resize_height", str(self.ui.image_result_height.value()))
 
         self.__settings.save()
 
@@ -228,14 +262,6 @@ class Composer(QMainWindow):
             message = QErrorMessage(self)
             message.showMessage(str(err))
             self.ui.output_path.clear()
-
-    @pyqtSlot()
-    def on_bucket_name_changed(self):
-        self.__settings_changed()
-
-    @pyqtSlot()
-    def on_upload_to_s3_clicked(self):
-        self.__settings_changed()
 
     @pyqtSlot()
     def on_generate_template_button_clicked(self):
