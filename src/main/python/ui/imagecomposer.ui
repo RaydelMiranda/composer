@@ -897,6 +897,14 @@
      <height>24</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="area_zoom_action"/>
+    <addaction name="area_crop_action"/>
+   </widget>
+   <addaction name="menuTools"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -905,10 +913,50 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="area_zoom_action"/>
+   <addaction name="area_crop_action"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
+  <action name="area_zoom_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources/resources.qrc">
+     <normaloff>:/icons/icons/icons8-zoom-para-extensión-50.png</normaloff>:/icons/icons/icons8-zoom-para-extensión-50.png</iconset>
+   </property>
+   <property name="text">
+    <string>Zoom area selection</string>
+   </property>
+   <property name="toolTip">
+    <string>Select area from zoom</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+Z</string>
+   </property>
+  </action>
+  <action name="area_crop_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources/resources.qrc">
+     <normaloff>:/icons/icons/icons8-cupón-para-recortar-50.png</normaloff>:/icons/icons/icons8-cupón-para-recortar-50.png</iconset>
+   </property>
+   <property name="text">
+    <string>Crop are selection</string>
+   </property>
+   <property name="toolTip">
+    <string>Crop area selection</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+X</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <resources/>
+ <resources>
+  <include location="resources/resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

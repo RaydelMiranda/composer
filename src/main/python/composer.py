@@ -14,13 +14,12 @@ from ui.common import PRIMARY, SECONDARY, BACKGROUND, PRESENTATION, GenerationOp
 from ui.composer_graphic_scene import ComposerGraphicScene
 from ui.imagecomposer import Ui_Imagecomposer
 from ui.models import ResourceModel
+from ui.selectors import Selector
 
 
 @contextmanager
 def disconnected_signal(control, signal_name):
     pass
-
-
 
 
 class ComposeWorker(QObject):
@@ -83,6 +82,9 @@ class Composer(QMainWindow):
 
         self._composition_thread = QThread()
         self._composition_worker = None
+
+        self._zoom_selector = None
+        self._crop_selector = None
 
         self.__load_settings()
 
@@ -452,6 +454,24 @@ class Composer(QMainWindow):
             template.load_from_file(template_file=template_file)
             self.ui.preview_scene.template = template
             self.on_generate_button_clicked()
+
+    @pyqtSlot(bool)
+    def on_area_zoom_action_toggled(self, value):
+        if value:
+            self._zoom_selector = Selector(0, 0, 300, 150)
+            self.ui.preview_scene.addItem(self._zoom_selector)
+        else:
+            self.ui.preview_scene.removeItem(self._zoom_selector)
+            self._zoom_selector = None
+
+    @pyqtSlot(bool)
+    def on_area_crop_action_toggled(self, value):
+        if value:
+            self._crop_selector = Selector(0, 0, 300, 150, rgb=(0, 0, 255))
+            self.ui.preview_scene.addItem(self._crop_selector)
+        else:
+            self.ui.preview_scene.removeItem(self._crop_selector)
+            self._crop_selector = None
 
 
 if __name__ == '__main__':

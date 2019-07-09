@@ -1,5 +1,6 @@
-from PyQt5.QtCore import Qt, pyqtSignal, QPointF
-from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QErrorMessage
+from PyQt5.QtCore import Qt, pyqtSignal, QPointF, QSize, QPoint, QRectF, QSizeF, QRect
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QErrorMessage, QRubberBand, QGraphicsColorizeEffect
 from pathlib import Path
 
 from models.template import Template, LayerType, Position, Size, NoBaseSvgError
@@ -29,6 +30,9 @@ class ComposerGraphicScene(QGraphicsScene):
 
         self.__template = Template()
         self.__background_item = None
+
+        self._rubber_band = None
+        self._rubber_band_origin = QPoint(0, 0)
 
     @property
     def template(self):

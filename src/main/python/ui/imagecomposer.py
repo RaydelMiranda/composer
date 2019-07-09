@@ -464,6 +464,8 @@ class Ui_Imagecomposer(object):
         self.menuBar = QtWidgets.QMenuBar(Imagecomposer)
         self.menuBar.setGeometry(QtCore.QRect(0, 0, 1498, 24))
         self.menuBar.setObjectName("menuBar")
+        self.menuTools = QtWidgets.QMenu(self.menuBar)
+        self.menuTools.setObjectName("menuTools")
         Imagecomposer.setMenuBar(self.menuBar)
         self.mainToolBar = QtWidgets.QToolBar(Imagecomposer)
         self.mainToolBar.setObjectName("mainToolBar")
@@ -471,6 +473,23 @@ class Ui_Imagecomposer(object):
         self.statusBar = QtWidgets.QStatusBar(Imagecomposer)
         self.statusBar.setObjectName("statusBar")
         Imagecomposer.setStatusBar(self.statusBar)
+        self.area_zoom_action = QtWidgets.QAction(Imagecomposer)
+        self.area_zoom_action.setCheckable(True)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(":/icons/icons/icons8-zoom-para-extensión-50.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.area_zoom_action.setIcon(icon)
+        self.area_zoom_action.setObjectName("area_zoom_action")
+        self.area_crop_action = QtWidgets.QAction(Imagecomposer)
+        self.area_crop_action.setCheckable(True)
+        icon1 = QtGui.QIcon()
+        icon1.addPixmap(QtGui.QPixmap(":/icons/icons/icons8-cupón-para-recortar-50.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.area_crop_action.setIcon(icon1)
+        self.area_crop_action.setObjectName("area_crop_action")
+        self.menuTools.addAction(self.area_zoom_action)
+        self.menuTools.addAction(self.area_crop_action)
+        self.menuBar.addAction(self.menuTools.menuAction())
+        self.mainToolBar.addAction(self.area_zoom_action)
+        self.mainToolBar.addAction(self.area_crop_action)
 
         self.retranslateUi(Imagecomposer)
         self.tabWidget.setCurrentIndex(0)
@@ -518,7 +537,15 @@ class Ui_Imagecomposer(object):
         self.generate_button.setText(_translate("Imagecomposer", "Generate"))
         self.using_template_button.setText(_translate("Imagecomposer", "Generate using existing template"))
         self.generate_template_button.setText(_translate("Imagecomposer", "Generate template"))
+        self.menuTools.setTitle(_translate("Imagecomposer", "Tools"))
+        self.area_zoom_action.setText(_translate("Imagecomposer", "Zoom area selection"))
+        self.area_zoom_action.setToolTip(_translate("Imagecomposer", "Select area from zoom"))
+        self.area_zoom_action.setShortcut(_translate("Imagecomposer", "Ctrl+Shift+Z"))
+        self.area_crop_action.setText(_translate("Imagecomposer", "Crop are selection"))
+        self.area_crop_action.setToolTip(_translate("Imagecomposer", "Crop area selection"))
+        self.area_crop_action.setShortcut(_translate("Imagecomposer", "Ctrl+Shift+X"))
 
+import resources_rc
 
 if __name__ == "__main__":
     import sys
