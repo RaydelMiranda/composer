@@ -83,9 +83,6 @@ class Composer(QMainWindow):
         self._composition_thread = QThread()
         self._composition_worker = None
 
-        self._zoom_selector = None
-        self._crop_selector = None
-
         self.__load_settings()
 
         # Connect conf widgets.
@@ -183,6 +180,9 @@ class Composer(QMainWindow):
         self.ui.item_properties.setEnabled(False)
 
         self.ui.preview_scene.item_moved.connect(self.on_graphic_item_moved)
+
+        self.ui.preview_scene.zoom_selector = None
+        self.ui.preview_scene.crop_selector = None
 
     def __prepare_list_views(self):
         # Models.
@@ -457,21 +457,30 @@ class Composer(QMainWindow):
 
     @pyqtSlot(bool)
     def on_area_zoom_action_toggled(self, value):
+
+        scene_rect = self.ui.preview_scene.sceneRect()
+
+        handle_size = max([scene_rect.width(), scene_rect.height()]) * 0.01
+        handle_space = handle_size / -2
+
         if value:
-            self._zoom_selector = Selector(0, 0, 300, 150)
-            self.ui.preview_scene.addItem(self._zoom_selector)
+            self.ui.preview_scene.zoom_selector = Selector(
+                0, 0, scene_rect.width() * 0.25, scene_rect.height() * 0.25,
+                handle_size=handle_size, handle_space=handle_space
+            )
+            self.ui.preview_scene.addItem(self.ui.preview_scene.zoom_selector)
         else:
             self.ui.preview_scene.removeItem(self._zoom_selector)
-            self._zoom_selector = None
+            self.ui.preview_scene.zoom_selector = None
 
     @pyqtSlot(bool)
     def on_area_crop_action_toggled(self, value):
         if value:
-            self._crop_selector = Selector(0, 0, 300, 150, rgb=(0, 0, 255))
-            self.ui.preview_scene.addItem(self._crop_selector)
+            self.ui.preview_scene.crop_selector = Selector(0, 0, 300, 150, rgb=(0, 0, 255))
+            self.ui.preview_scene.addItem(self.ui.preview_scene.crop_selector)
         else:
-            self.ui.preview_scene.removeItem(self._crop_selector)
-            self._crop_selector = None
+            self.ui.preview_scene.removeItem(self.ui.preview_scene.crop_selector)
+            self.ui.preview_scene.crop_selector = None
 
 
 if __name__ == '__main__':

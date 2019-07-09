@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import QGraphicsRectItem, QApplication, QGraphicsView, QGra
 
 
 class Selector(QGraphicsRectItem):
-
     handle_top_left = 1
     handle_top_middle = 2
     handle_top_right = 3
@@ -15,9 +14,6 @@ class Selector(QGraphicsRectItem):
     handle_bottom_left = 6
     handle_bottom_middle = 7
     handle_bottom_right = 8
-
-    handle_size = +8.0
-    handle_space = -4.0
 
     handle_cursors = {
         handle_top_left: Qt.SizeFDiagCursor,
@@ -30,11 +26,15 @@ class Selector(QGraphicsRectItem):
         handle_bottom_right: Qt.SizeFDiagCursor,
     }
 
-    def __init__(self, *args, rgb=(255, 0, 0)):
+    def __init__(self, *args, rgb=(255, 0, 0), handle_size=+8.0, handle_space=-4.0):
         """
         Initialize the shape.
         """
         super().__init__(*args)
+
+        self.handle_size = handle_size
+        self.handle_space = handle_space
+
         self.handles = {}
         self.handle_selected = None
         self.mouse_press_pos = None
@@ -257,7 +257,6 @@ class Selector(QGraphicsRectItem):
 
 
 def main():
-
     app = QApplication(sys.argv)
 
     grview = QGraphicsView()
