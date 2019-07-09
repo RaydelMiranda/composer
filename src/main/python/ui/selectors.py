@@ -1,6 +1,6 @@
 import sys
 
-from PyQt5.QtCore import Qt, QRectF, QPointF
+from PyQt5.QtCore import Qt, QRectF, QPointF, QSize, pyqtSignal, QObject
 from PyQt5.QtGui import QBrush, QPainterPath, QPainter, QColor, QPen, QPixmap
 from PyQt5.QtWidgets import QGraphicsRectItem, QApplication, QGraphicsView, QGraphicsScene, QGraphicsItem
 
@@ -46,6 +46,8 @@ class Selector(QGraphicsRectItem):
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
         self.setFlag(QGraphicsItem.ItemIsFocusable, True)
         self.updateHandlesPos()
+
+        self.text_size = self.rect().height() / 15
 
     def handleAt(self, point):
         """
@@ -182,7 +184,6 @@ class Selector(QGraphicsRectItem):
             self.setRect(rect)
 
         elif self.handle_selected == self.handle_middle_right:
-            print("MR")
             from_x = self.mouse_press_rect.right()
             to_x = from_x + mouse_pos.x() - self.mouse_press_pos.x()
             diff.setX(to_x - from_x)
@@ -244,6 +245,7 @@ class Selector(QGraphicsRectItem):
         """
         Paint the node in the graphic view.
         """
+
         painter.setBrush(QBrush(QColor(*self.rgb, 100)))
         painter.setPen(QPen(QColor(0, 0, 0), 1.0, Qt.SolidLine))
         painter.drawRect(self.rect())
@@ -254,6 +256,26 @@ class Selector(QGraphicsRectItem):
         for handle, rect in self.handles.items():
             if self.handle_selected is None or handle == self.handle_selected:
                 painter.drawEllipse(rect)
+
+        font = painter.font()
+        font.setPointSize(self.text_size)
+        painter.setFont(font)
+
+        text_padding = self.text_size / 2
+
+        painter.drawText(
+            self.rect().x() + self.text_size + text_padding,
+            self.rect().y() + self.text_size + text_padding,
+            f'( {self.rect().width():.2f} x {self.rect().height():.2f} )'
+        )
+
+    def itemChange(self, change, value):
+        scene = self.scene()
+        if scene and QGraphicsItem.ItemPositionHasChanged == change:
+            scene.on_item_position_change(self, change, value)
+        if scene and QGraphicsItem.ItemScaleHasChanged == change:
+            scene.on_item_scale_changed(self, change, value)
+        return super(Selector, self).itemChange(change, value)
 
 
 def main():

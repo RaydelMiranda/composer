@@ -458,25 +458,36 @@ class Composer(QMainWindow):
     @pyqtSlot(bool)
     def on_area_zoom_action_toggled(self, value):
 
-        scene_rect = self.ui.preview_scene.sceneRect()
-
-        handle_size = max([scene_rect.width(), scene_rect.height()]) * 0.01
-        handle_space = handle_size / -2
-
         if value:
+
+            scene_rect = self.ui.preview_scene.sceneRect()
+
+            handle_size = max([scene_rect.width(), scene_rect.height()]) * 0.01
+            handle_space = handle_size / -2
+
             self.ui.preview_scene.zoom_selector = Selector(
-                0, 0, scene_rect.width() * 0.25, scene_rect.height() * 0.25,
+                handle_size, handle_size, scene_rect.width() * 0.25, scene_rect.height() * 0.25,
                 handle_size=handle_size, handle_space=handle_space
             )
             self.ui.preview_scene.addItem(self.ui.preview_scene.zoom_selector)
         else:
-            self.ui.preview_scene.removeItem(self._zoom_selector)
+            self.ui.preview_scene.removeItem(self.ui.preview_scene.zoom_selector)
             self.ui.preview_scene.zoom_selector = None
 
     @pyqtSlot(bool)
     def on_area_crop_action_toggled(self, value):
+
         if value:
-            self.ui.preview_scene.crop_selector = Selector(0, 0, 300, 150, rgb=(0, 0, 255))
+
+            scene_rect = self.ui.preview_scene.sceneRect()
+
+            handle_size = max([scene_rect.width(), scene_rect.height()]) * 0.01
+            handle_space = handle_size / -2
+
+            self.ui.preview_scene.crop_selector = Selector(
+                handle_size, handle_size, scene_rect.width() * 0.25, scene_rect.height() * 0.25, rgb=(0, 0, 255),
+                handle_size=handle_size, handle_space=handle_space
+            )
             self.ui.preview_scene.addItem(self.ui.preview_scene.crop_selector)
         else:
             self.ui.preview_scene.removeItem(self.ui.preview_scene.crop_selector)
