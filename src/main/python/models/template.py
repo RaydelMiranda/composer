@@ -212,7 +212,7 @@ class Template:
 
         try:
             svg_figure = svg.transform.fromstring(svg_xml.decode())
-        except lxml.etree.XMLSysntaxError as err:
+        except Exception as err:
             logger.exception(err)
             return None
         else:

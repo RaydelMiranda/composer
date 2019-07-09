@@ -20,6 +20,7 @@ This file is part of "VillaFlores Product Creator".
 import base64
 import logging
 import os
+import subprocess
 from configparser import NoOptionError
 from ctypes import c_void_p, c_wchar_p
 from gettext import gettext as _
@@ -134,7 +135,22 @@ def compose(
             library.MagickSetOption(image.wand, 'webp:method', '6')
 
             image.compression_quality = 99
-            image.adaptive_resize(settings.adaptive_resize_width, settings.adaptive_resize_height)
+
+            new_width = settings.adaptive_resize_width
+            new_height = settings.adaptive_resize_height
+
+            # If just one of the size is 0, scale to keep aspect ratio.
+            if (new_height + new_width) != (new_height or new_width):
+                # Both are different from 0
+                image.adaptive_resize(columns=new_width, rows=new_height)
+            else:
+                # One of them is 0.
+                if new_height == 0:
+                    factor = new_width / image.width
+                else:
+                    factor = new_height / image.height
+
+                image.adaptive_resize(columns=int(image.width * factor), rows=int(image.height * factor))
 
             if options.unsharp:
                 image.unsharp_mask(radius=0, sigma=1, amount=1, threshold=0)

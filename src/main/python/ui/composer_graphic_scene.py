@@ -70,9 +70,19 @@ class ComposerGraphicScene(QGraphicsScene):
             if origin != BACKGROUND:
                 # Scale to fit the scene.
                 scene_rect = self.sceneRect()
+                item_rect = item.boundingRect()
+
                 scene_width = scene_rect.width()
-                item_width = item.boundingRect().width()
-                factor = scene_width / (2 * item_width)
+                scene_height = scene_rect.height()
+
+                item_width = item_rect.width()
+                item_height = item_rect.height()
+
+                if scene_width >= scene_height:
+                    factor = scene_height / (2 * item_height)
+                else:
+                    factor = scene_width / (2 * item_width)
+
                 item.setScale(factor)
 
                 dx = item.boundingRect().width() * factor / 2
