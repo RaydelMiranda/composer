@@ -1,6 +1,8 @@
 import logging
 from collections import namedtuple
 from enum import Enum, unique
+from typing import Union
+
 from itertools import count
 from pathlib import Path
 
@@ -30,13 +32,17 @@ class LayerType(Enum):
     PRIMARY = 0
     PRESENTATION = 1
     SECONDARY = 2
+    ZOOM_SELECTION = 3
+    CROP_SELECTION = 4
 
 
 class Layer:
     _type_counter = {
         LayerType.PRIMARY: count(),
         LayerType.SECONDARY: count(),
-        LayerType.PRESENTATION: count()
+        LayerType.PRESENTATION: count(),
+        LayerType.ZOOM_SELECTION: count(),
+        LayerType.CROP_SELECTION: count()
     }
 
     XML_REPR = (
@@ -112,7 +118,7 @@ class Layer:
 
     @property
     def xml(self) -> str:
-        return Layer.XML_REPR.format(
+        return self.XML_REPR.format(
             layer_id=self.layer_id,
             image_pos_x=f'{self.pos.x}',
             image_pos_y=f'{self.pos.y}',
@@ -128,6 +134,29 @@ class Layer:
             self._size = size
 
         return self
+
+
+class SelectionLayer(Layer):
+    XML_REPR = (
+        """
+    <selection_layer
+        id="{layer_id}"
+    >   
+
+        <image
+            y="{image_pos_y}"
+            x="{image_pos_x}"
+            id="{image_id}"
+            preserveAspectRatio="none"
+            height="{image_height}"
+            width="{image_width}" 
+        />
+
+    </selection_layer>
+    """)
+
+    def __init__(self, pos: Position, size: Size, _type: LayerType, lock_aspect_ratio: bool = True):
+        super(SelectionLayer, self).__init__(pos, size, _type, lock_aspect_ratio=lock_aspect_ratio)
 
 
 class Template:
@@ -158,10 +187,21 @@ class Template:
 
     def add_layer(self, pos: Position, size: Size, _type: LayerType) -> Layer:
 
+        if _type in [LayerType.CROP_SELECTION, LayerType.ZOOM_SELECTION]:
+            return self._add_selection_layer(pos, size, _type)
+
         if self.__base_svg is None and not self.__loaded_from_file:
             raise NoBaseSvgError(_("You must set a background before being able to add any layer."))
 
         layer = Layer(pos, size, _type)
+        self.__layers.append(layer)
+        return layer
+
+    def _add_selection_layer(self, pos: Position, size: Size, _type: LayerType):
+        if self.__base_svg is None and not self.__loaded_from_file:
+            raise NoBaseSvgError(_("You must set a background before being able to perform any selection."))
+
+        layer = SelectionLayer(pos, size, _type)
         self.__layers.append(layer)
         return layer
 
@@ -184,7 +224,6 @@ class Template:
         self.__loaded_from_file = True
 
         for layer in layer_selector(tree):
-
             layer_type_name = layer.get("id").split('-')[1]
 
             image = image_selector(layer)[0]
@@ -249,13 +288,25 @@ class Template:
         return svg_xml.replace(b'</svg>', layer_injection.encode())
 
     def get_primary_layer(self) -> Layer:
-        return next(layer for layer in self.__layers if layer.type == LayerType.PRIMARY)
+        return self._get_layer_by_type(LayerType.PRIMARY)
 
-    def get_presentation_layer(self):
-        return next(layer for layer in self.__layers if layer.type == LayerType.PRESENTATION)
+    def get_presentation_layer(self) -> Layer:
+        return self._get_layer_by_type(LayerType.PRESENTATION)
 
     def get_secondary_layers(self) -> [Layer]:
         return [layer for layer in self.__layers if layer.type == LayerType.SECONDARY]
+
+    def get_zoom_selection_layer(self) -> Layer:
+        return self._get_layer_by_type(LayerType.ZOOM_SELECTION)
+
+    def get_crop_selection_layer(self) -> Layer:
+        return self._get_layer_by_type(LayerType.CROP_SELECTION)
+
+    def _get_layer_by_type(self, _type: LayerType) -> Union[Layer, None]:
+        try:
+            return next(layer for layer in self.__layers if layer.type == _type)
+        except StopIteration:
+            return None
 
     def render(self) -> Path:
         """
