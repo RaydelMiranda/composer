@@ -13,6 +13,7 @@ POSSIBLE_ORIGINS = [
 ]
 
 SVG_SCALE_FACTOR = 1
+DEFAULT_WEB_RESOLUTION = 72
 
 IMAGE_TYPES = ['svg', 'png', 'jpg', 'jpeg']
 

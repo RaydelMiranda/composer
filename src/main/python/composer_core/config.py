@@ -35,11 +35,10 @@ if not os.path.exists(CONFIG_FILE):
     config.set('composer', 'num_threads', '5')
 
     config.set('composer', 'output_geometry', '568x568')
-    config.set('composer', 'image_resolution', '512')
+    config.set('composer', 'image_resolution', '72')
     config.set('composer', 'adaptive_resize_width', '1500')
     config.set('composer', 'adaptive_resize_height', '1500')
     config.set('composer', 'unsharp', "True")
-
 
     config.set('composer', 'override_target_files', "True")
     config.set('composer', 'output_path', ".")
