@@ -38,7 +38,7 @@ from wand.api import library
 from composer_core.composer.common import CompositionItem
 from composer_core.config import settings
 from models.template import Template
-from ui.common import GenerationOptions
+from ui.common import GenerationOptions, DEFAULT_WEB_RESOLUTION
 
 init()
 
@@ -127,10 +127,11 @@ def compose(
         try:
             image_resolution = settings.inner_config_obj.getint('composer', 'image_resolution')
         except NoOptionError as err:
+            image_resolution = DEFAULT_WEB_RESOLUTION
             settings.inner_config_obj['composer']['image_resolution'] = str(image_resolution)
             settings.save()
 
-        with wand_img.Image(filename=svg_file.name) as image:
+        with wand_img.Image(filename=svg_file.name, resolution=image_resolution) as image:
 
             library.MagickSetOption(image.wand, 'webp:lossless', 'true')
             library.MagickSetOption(image.wand, 'webp:alpha-quality', '100')
