@@ -214,7 +214,7 @@ class Template:
         layer_selector = CSSSelector("[id^=layer-]")
         image_selector = CSSSelector("[id^=image-]")
 
-        parser = etree.XMLParser()
+        parser = etree.XMLParser(huge_tree=True)
         tree = etree.parse(template_file, parser)
 
         self.__str_representation = etree.tostring(tree)
