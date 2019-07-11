@@ -20,7 +20,7 @@ This file is part of "VillaFlores Product Creator".
 import base64
 import logging
 import os
-import subprocess
+from collections import namedtuple
 from configparser import NoOptionError
 from ctypes import c_void_p, c_wchar_p
 from gettext import gettext as _
@@ -62,10 +62,12 @@ logger = logging.getLogger('vf_productcreate')
 xml_tree_memoization = {}
 image_memoization = {}
 
+CompositionRenderResult = namedtuple('CompositionRenderResult', 'filename, svg_path, scale_factor')
+
 
 def compose(
         items: [CompositionItem], template: Template, options: GenerationOptions,
-        output: Path, verbose=False) -> Path:
+        output: Path, verbose=False) -> CompositionRenderResult:
     """
     Compose images from combinations of a set of images and a template.
 
@@ -79,8 +81,10 @@ def compose(
 
     svg_temp_name = None
 
-    template_stream = BytesIO(template.render_to_str())
-    svg = etree.parse(template_stream)
+    template_stream = BytesIO(template.render_to_bytes())
+
+    parser = etree.XMLParser(huge_tree=True)
+    svg = etree.parse(template_stream, parser=parser)
 
     for item in items:
         if not image_memoization.get(item.image_path, False):
@@ -123,11 +127,10 @@ def compose(
         try:
             image_resolution = settings.inner_config_obj.getint('composer', 'image_resolution')
         except NoOptionError as err:
-            image_resolution = 512
             settings.inner_config_obj['composer']['image_resolution'] = str(image_resolution)
             settings.save()
 
-        with wand_img.Image(filename=svg_file.name, resolution=image_resolution) as image:
+        with wand_img.Image(filename=svg_file.name) as image:
 
             library.MagickSetOption(image.wand, 'webp:lossless', 'true')
             library.MagickSetOption(image.wand, 'webp:alpha-quality', '100')
@@ -138,6 +141,8 @@ def compose(
 
             new_width = settings.adaptive_resize_width
             new_height = settings.adaptive_resize_height
+
+            factor = 1.0
 
             # If just one of the size is 0, scale to keep aspect ratio.
             if (new_height + new_width) != (new_height or new_width):
@@ -161,4 +166,4 @@ def compose(
 
             image.save(filename=str(output_file_path))
 
-            return Path(output_file_path)
+            return CompositionRenderResult(filename=output_file_path, svg_path=Path(svg_file.name), scale_factor=factor)

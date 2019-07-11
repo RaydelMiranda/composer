@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit, Q
 from _s3.sync import S3Sync
 from composer_core.composer.composition import CompositionBuilder, Composition
 from composer_core.config import settings
-from models.template import OutputDirError, Template
+from models.template import OutputDirError, Template, Position, Size, LayerType, Layer
 from ui.common import PRIMARY, SECONDARY, BACKGROUND, PRESENTATION, GenerationOptions
 from ui.composer_graphic_scene import ComposerGraphicScene
 from ui.imagecomposer import Ui_Imagecomposer
@@ -470,8 +470,12 @@ class Composer(QMainWindow):
                 handle_size=handle_size, handle_space=handle_space
             )
             self.ui.preview_scene.addItem(self.ui.preview_scene.zoom_selector)
+
+            layer = self._add_selector_layer(self.ui.preview_scene.zoom_selector, LayerType.ZOOM_SELECTION)
+            self.ui.preview_scene.template.map_layer_with_item(layer, self.ui.preview_scene.zoom_selector)
         else:
             self.ui.preview_scene.removeItem(self.ui.preview_scene.zoom_selector)
+            self.ui.preview_scene.template.remove_layer_for_item(self.ui.preview_scene.zoom_selector)
             self.ui.preview_scene.zoom_selector = None
 
     @pyqtSlot(bool)
@@ -489,9 +493,27 @@ class Composer(QMainWindow):
                 handle_size=handle_size, handle_space=handle_space
             )
             self.ui.preview_scene.addItem(self.ui.preview_scene.crop_selector)
+
+            layer = self._add_selector_layer(self.ui.preview_scene.crop_selector, LayerType.CROP_SELECTION)
+            self.ui.preview_scene.template.map_layer_with_item(layer, self.ui.preview_scene.crop_selector)
+
         else:
             self.ui.preview_scene.removeItem(self.ui.preview_scene.crop_selector)
+            self.ui.preview_scene.template.remove_layer_for_item(self.ui.preview_scene.crop_selector)
             self.ui.preview_scene.crop_selector = None
+
+    def _add_selector_layer(self, selector, layer_type) -> Layer:
+
+        pos = Position(selector.x(), selector.y(), selector.zValue())
+
+        size = Size(
+            selector.boundingRect().width(),
+            selector.boundingRect().height()
+        )
+
+        layer = self.ui.preview_scene.template.add_layer(pos=pos, size=size, _type=layer_type)
+
+        return layer
 
 
 if __name__ == '__main__':

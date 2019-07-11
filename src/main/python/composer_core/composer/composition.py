@@ -3,7 +3,7 @@ import shutil
 import itertools
 import logging
 import re
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from ctypes import c_void_p, c_wchar_p
 from gettext import gettext as _
 from pathlib import Path
@@ -11,9 +11,10 @@ from typing import Generator, Callable, Any, Union
 
 from colorama import Fore, Style
 from wand.api import library
+from wand.image import Image
 
 from composer_core.composer.common import CompositionItem
-from composer_core.composer.compose import compose
+from composer_core.composer.compose import compose, CompositionRenderResult
 from composer_core.config import settings
 from models.template import Template, LayerType
 from ui.common import GenerationOptions, PRESENTATION, BACKGROUND
@@ -42,7 +43,7 @@ class Composition:
         self._items = items
         self._template = template
 
-    def render(self, options: GenerationOptions, output_path: Path = None, ) -> Path:
+    def render(self, options: GenerationOptions, output_path: Path = None, ) -> CompositionRenderResult:
         """
         Render this composition into a complete image.
 
@@ -56,7 +57,79 @@ class Composition:
         composition_file_name = compute_output_name(self, presentation_code_pattern=settings.presentation_code_pattern)
         output_file_name = output_path.joinpath(composition_file_name)
 
-        return compose(self._items, self._template, options, output=output_file_name)
+        result = compose(self._items, self._template, options, output=output_file_name)
+
+        return result
+
+    def _extract_zoom(self, output_dir: Path, output_file_name: str, source_image: Path) -> Path:
+        """
+        Extract the part of the image selected for use as zoom, this part is specified by
+        the ZOOM layer in the template.
+
+        :return: The path for the generated image.
+        """
+        zoom_layer = self._template.get_zoom_selection_layer()
+
+    def extract_zoom(self, source_image: Path, options: GenerationOptions) -> Union[Path, None]:
+        """
+        Extract the part of the image selected for use as a square image, this part is specified by
+        the crop layer in the template.
+
+        :return: The path for the generated image.
+        """
+        crop_layer = self._template.get_zoom_selection_layer()
+
+        if crop_layer:
+
+            with Image(filename=str(source_image)) as original:
+                with original.clone() as image:
+                    image.crop(
+                        left=int(crop_layer.pos.x),
+                        top=int(crop_layer.pos.y),
+                        width=int(crop_layer.width),
+                        height=int(crop_layer.height)
+                    )
+
+                    new_width = settings.adaptive_resize_width
+                    new_height = settings.adaptive_resize_height
+
+                    # If just one of the size is 0, scale to keep aspect ratio.
+                    if (new_height + new_width) != (new_height or new_width):
+                        # Both are different from 0
+                        image.adaptive_resize(columns=new_width, rows=new_height)
+                    else:
+                        # One of them is 0.
+                        if new_height == 0:
+                            factor = new_width / image.width
+                        else:
+                            factor = new_height / image.height
+
+                        image.adaptive_resize(columns=int(image.width * factor), rows=int(image.height * factor))
+
+                    output_dir = source_image.parent
+                    name = source_image.name
+                    name = name.replace(source_image.suffix, f'.crop.webp')
+                    crop_file_name = output_dir.joinpath(name)
+
+                    # Image processing.
+                    library.MagickSetOption(image.wand, 'webp:lossless', 'true')
+                    library.MagickSetOption(image.wand, 'webp:alpha-quality', '100')
+                    library.MagickSetOption(image.wand, 'webp:emulate-jpeg-size', 'true')
+                    library.MagickSetOption(image.wand, 'webp:method', '6')
+
+                    image.compression_quality = 99
+
+                    if options.unsharp:
+                        image.unsharp_mask(radius=0, sigma=1, amount=1, threshold=0)
+                        image.adaptive_sharpen(0.5, 2.5)
+
+                    if options.override_images and crop_file_name.exists():
+                        crop_file_name.unlink()
+
+                    # Save file.
+                    image.save(filename=str(crop_file_name))
+
+                    return crop_file_name
 
     def __str__(self):
         end_line = "\n"
@@ -141,7 +214,8 @@ class Composition:
 
         # Render composition to the desired folder. render method will also save the
         # svg file corresponding to this composition.
-        path_to_webp = self.render(options, main_product_dir)
+        result = self.render(options, main_product_dir)
+        self.extract_zoom(result.svg_path, options)
 
         # Save presentation
         self.save_presentation(root_dir)
@@ -153,7 +227,7 @@ class Composition:
         clipping_dir = self.save_clipping(clipping_dir, root_dir)
         self.save_secondary_items(clipping_dir)
 
-        return path_to_webp
+        return result.filename
 
     def save_presentation(self, root_dir: Path):
 
@@ -237,6 +311,8 @@ class CompositionBuilder:
         for combo in itertools.product(primary_presentation_combos, secondary_combos):
             primary_and_presentation = combo[0]
             secondaries = combo[1]
+
+            # Add selection items (zoom, crop, ...)  to all compositions.
 
             all_ = list(itertools.chain(primary_and_presentation, secondaries))
 

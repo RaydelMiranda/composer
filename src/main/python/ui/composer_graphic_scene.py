@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QErrorMessage, 
 from pathlib import Path
 
 from models.template import Template, LayerType, Position, Size, NoBaseSvgError
-from ui.common import BACKGROUND, PRESENTATION, PRIMARY, SECONDARY
+from ui.common import BACKGROUND, PRESENTATION, PRIMARY, SECONDARY, SVG_SCALE_FACTOR
 
 
 class CustomPixmapItem(QGraphicsPixmapItem):
@@ -139,8 +139,10 @@ class ComposerGraphicScene(QGraphicsScene):
         print(f'Origin: {origin}, Path: {path}')
 
         bounding_rect = item.boundingRect()
-        pos = Position(item.x(), item.y(), item.zValue())
-        size = Size(bounding_rect.width(), bounding_rect.height())
+
+        pos = Position(item.x() * SVG_SCALE_FACTOR, item.y() * SVG_SCALE_FACTOR, item.zValue())
+
+        size = Size(bounding_rect.width() * SVG_SCALE_FACTOR, bounding_rect.height() * SVG_SCALE_FACTOR)
 
         if origin == BACKGROUND:
             self.__template.set_background(path, size=size)

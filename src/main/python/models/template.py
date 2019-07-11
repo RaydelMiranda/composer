@@ -1,6 +1,8 @@
 import logging
 from collections import namedtuple
 from enum import Enum, unique
+from io import BytesIO
+
 from typing import Union
 
 from itertools import count
@@ -10,6 +12,8 @@ import lxml
 import svgutils as svg
 from lxml import etree
 from lxml.cssselect import CSSSelector
+
+from ui.common import SVG_SCALE_FACTOR
 
 logger = logging.getLogger(__file__)
 
@@ -240,7 +244,7 @@ class Template:
         self.__layers.remove(self.__layer_map_to_item[item])
         del self.__layer_map_to_item[item]
 
-    def __build_svg_final_figure(self):
+    def __build_svg_final_figure(self) -> BytesIO:
         if self.__base_svg is None:
             raise NoBaseSvgError(_("You must , at least, set a background before being able to render the svg."))
 
@@ -249,13 +253,9 @@ class Template:
         for layer in self.__layers:
             svg_xml = self.__inject_layer(svg_xml, layer)
 
-        try:
-            svg_figure = svg.transform.fromstring(svg_xml.decode())
-        except Exception as err:
-            logger.exception(err)
-            return None
-        else:
-            return svg_figure
+        svg_xml_stream = BytesIO(svg_xml)
+
+        return svg_xml_stream
 
     @property
     def output_dir(self):
@@ -316,21 +316,27 @@ class Template:
         of the generated template.
         """
 
-        svg_figure = self.__build_svg_final_figure()
+        svg_figure_stream = self.__build_svg_final_figure()
 
-        if svg_figure is not None:
-            template_filename = self.__output_dir.joinpath("template.svg")
-            svg_figure.save(template_filename)
+        template_filename = self.__output_dir.joinpath("template.svg")
+        with open(template_filename, 'wb') as template_file:
+            template_file.write(svg_figure_stream.read())
             return template_filename
 
-    def render_to_str(self):
+    def render_to_bytes(self):
         """ Write an svg as string. """
         if self.__str_representation is not None:
             return self.__str_representation
 
-        svg_figure = self.__build_svg_final_figure()
-        if svg_figure is not None:
-            self.__str_representation = svg_figure.to_str()
+        svg_stream = self.__build_svg_final_figure()
+
+        # Proactive reset of the stream in case it has been read at some point.
+        svg_stream.seek(0)
+
+        result = svg_stream.read()
+
+        if result:
+            self.__str_representation = result
 
         return self.__str_representation
 
@@ -344,10 +350,13 @@ class Template:
         if path.exists() and path.is_file():
             self.__background = background_file_path
 
-        self.__base_svg = svg.compose.Figure(
-            size.width, size.height,
-            svg.compose.Image(size.width, size.height, background_file_path)
-        )
+        try:
+            self.__base_svg = svg.compose.Figure(
+                size.width, size.height,
+                svg.compose.Image(size.width, size.height, background_file_path)
+            )
+        except Exception as err:
+            logger.exception(err)
 
     def update_layer(self, item):
         layer = self.__layer_map_to_item.get(item)
@@ -357,11 +366,11 @@ class Template:
 
         scale_factor = item.scale()
 
-        pos = Position(item.x(), item.y(), item.zValue())
+        pos = Position(item.x() * SVG_SCALE_FACTOR, item.y() * SVG_SCALE_FACTOR, item.zValue())
 
         size = Size(
-            item.boundingRect().width() * scale_factor,
-            item.boundingRect().height() * scale_factor
+            item.boundingRect().width() * scale_factor * SVG_SCALE_FACTOR,
+            item.boundingRect().height() * scale_factor * SVG_SCALE_FACTOR
         )
 
         layer.update(pos, size)
