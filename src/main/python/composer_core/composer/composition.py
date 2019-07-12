@@ -1,15 +1,14 @@
-import shutil
-
-import itertools
 import logging
-import re
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 from ctypes import c_void_p, c_wchar_p
 from gettext import gettext as _
-from pathlib import Path
-from typing import Generator, Callable, Any, Union
 
+import itertools
+import re
+import shutil
 from colorama import Fore, Style
+from pathlib import Path
+from typing import Generator, Callable, Union
 from wand.api import library
 from wand.image import Image
 
@@ -31,6 +30,24 @@ library.MagickSetOption.argtypes = [c_void_p,
 
 class CompositionError(Exception):
     pass
+
+
+def revalue_zero_dimension(
+        original_width: float, original_height: float, new_width: float, new_height: float
+) -> float:
+    """
+    Given new_with or new_height being 0, this function computes what its value should be to keep
+    aspect ratio.
+
+    :return: The value new_height or new_width must have to keep aspect ratio.
+    """
+
+    assert (new_width or new_height) != 0
+
+    if new_width == 0:
+        return original_width * (new_height / original_height)
+    if new_height == 0:
+        return original_height * (new_width / original_width)
 
 
 class Composition:
@@ -77,59 +94,108 @@ class Composition:
 
         :return: The path for the generated image.
         """
-        crop_layer = self._template.get_zoom_selection_layer()
+        crop_layer = None  # self._template.get_zoom_selection_layer()
 
-        if crop_layer:
+        self.extract_zoom_foreground()
+        self.extract_zoom_backdrop()
 
-            with Image(filename=str(source_image)) as original:
-                with original.clone() as image:
-                    image.crop(
-                        left=int(crop_layer.pos.x),
-                        top=int(crop_layer.pos.y),
-                        width=int(crop_layer.width),
-                        height=int(crop_layer.height)
-                    )
+        # Scaled size
+        new_width = settings.adaptive_resize_width
+        new_height = settings.adaptive_resize_height
 
-                    new_width = settings.adaptive_resize_width
-                    new_height = settings.adaptive_resize_height
+        with Image(filename="/tmp/kkk.jpg") as bg:
+            with Image(filename="/tmp/jjj.png") as fg:
+                bg.composite(fg)
+                bg.save(filename="/tmp/lll.jpg")
 
-                    # If just one of the size is 0, scale to keep aspect ratio.
-                    if (new_height + new_width) != (new_height or new_width):
-                        # Both are different from 0
-                        image.adaptive_resize(columns=new_width, rows=new_height)
-                    else:
-                        # One of them is 0.
-                        if new_height == 0:
-                            factor = new_width / image.width
-                        else:
-                            factor = new_height / image.height
+    def extract_zoom_foreground(self) -> Path:
 
-                        image.adaptive_resize(columns=int(image.width * factor), rows=int(image.height * factor))
+        # Get foreground image.
+        with Image(filename=str(self.primary_item.image_path)) as original_image:
+            # Original image size
+            original_width = original_image.width
+            original_height = original_image.height
 
-                    output_dir = source_image.parent
-                    name = source_image.name
-                    name = name.replace(source_image.suffix, f'.crop.webp')
-                    crop_file_name = output_dir.joinpath(name)
+            # Scaled size
+            new_width = settings.adaptive_resize_width
+            new_height = settings.adaptive_resize_height
 
-                    # Image processing.
-                    library.MagickSetOption(image.wand, 'webp:lossless', 'true')
-                    library.MagickSetOption(image.wand, 'webp:alpha-quality', '100')
-                    library.MagickSetOption(image.wand, 'webp:emulate-jpeg-size', 'true')
-                    library.MagickSetOption(image.wand, 'webp:method', '6')
+            # Items and layers.
+            zoom_layer = self._template.get_zoom_selection_layer()
+            zoom_item = self._template.get_item_for_layer(zoom_layer)
 
-                    image.compression_quality = 99
+            primary_layer = self._template.get_primary_layer()
+            primary_item = self._template.get_item_for_layer(primary_layer)
 
-                    if options.unsharp:
-                        image.unsharp_mask(radius=0, sigma=1, amount=1, threshold=0)
-                        image.adaptive_sharpen(0.5, 2.5)
+            # Compute coords from the original image.
+            primary_item_scale_factor = primary_item.scale()
 
-                    if options.override_images and crop_file_name.exists():
-                        crop_file_name.unlink()
+            dx = zoom_layer.pos.x - primary_layer.pos.x
+            dy = zoom_layer.pos.y - primary_layer.pos.y
 
-                    # Save file.
-                    image.save(filename=str(crop_file_name))
+            dx = (0 if dx < 0 else dx) / primary_item_scale_factor
+            dy = (0 if dy < 0 else dy) / primary_item_scale_factor
 
-                    return crop_file_name
+            real_dh = primary_layer.height / primary_item_scale_factor
+            real_dw = primary_layer.width / primary_item_scale_factor
+
+            bottom = dy + real_dh
+            right = dx + real_dw
+
+            if bottom > original_image.height:
+                bottom = original_image.height
+
+            if right > original_width:
+                right = original_image.width
+
+            with original_image.clone() as image:
+                image.crop(
+                    int(dx), int(dy),
+                    int(right), int(bottom)
+                )
+                image.save(filename="/tmp/jjj.png")
+
+    def extract_zoom_backdrop(self) -> Path:
+
+        zoom_layer = self._template.get_zoom_selection_layer()
+
+        # Get background original image.
+        with Image(filename=str(self._template.background)) as original_background:
+
+            # Original image size
+            original_width = original_background.width
+            original_height = original_background.height
+
+            # Scaled size
+            new_width = settings.adaptive_resize_width
+            new_height = settings.adaptive_resize_height
+
+            # One of the scaled dimension can be specified as 0 mining it must adjust adjust
+            # automatically in order to keep aspect ratio. Is that the case, find the other.
+            if (new_height + new_width) == (new_height or new_width):
+                # One of them is Zero.
+                kar_value = revalue_zero_dimension(original_width, original_height, new_width, new_height)
+                if new_width == 0:
+                    new_width = kar_value
+                else:
+                    new_height = kar_value
+
+            # Find scale factors.
+            h_scale_factor = original_height / new_height
+            w_scale_factor = original_width / new_width
+
+            # Scaled rect.
+            pos = zoom_layer.pos
+            left, top, = pos.x, pos.y
+            right, bottom = pos.x + zoom_layer.width, pos.y + zoom_layer.height
+
+            # Crop image.
+            with original_background.clone() as background_clone:
+                background_clone.crop(
+                    int(left), int(top),
+                    int(right), int(bottom)
+                )
+                background_clone.save(filename="/tmp/kkk.jpg")
 
     def __str__(self):
         end_line = "\n"

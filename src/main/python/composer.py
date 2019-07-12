@@ -515,6 +515,10 @@ class Composer(QMainWindow):
 
         return layer
 
+    @pyqtSlot()
+    def on_cancel_button_clicked(self):
+        pass
+
 
 if __name__ == '__main__':
     import sys

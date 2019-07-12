@@ -1,17 +1,15 @@
 import logging
 from collections import namedtuple
 from enum import Enum, unique
-from io import BytesIO
 
-from typing import Union
-
-from itertools import count
-from pathlib import Path
-
-import lxml
 import svgutils as svg
+from PyQt5.QtWidgets import QGraphicsItem
+from io import BytesIO
+from itertools import count
 from lxml import etree
 from lxml.cssselect import CSSSelector
+from pathlib import Path
+from typing import Union
 
 from ui.common import SVG_SCALE_FACTOR
 
@@ -374,3 +372,8 @@ class Template:
         )
 
         layer.update(pos, size)
+
+    def get_item_for_layer(self, layer: Layer) -> QGraphicsItem:
+        for item, _layer in self.__layer_map_to_item.items():
+            if _layer == layer:
+                return item
