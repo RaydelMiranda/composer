@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>Imagecomposer</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="resources/resources.qrc">
+    <normaloff>:/icons/icons/favicon.png</normaloff>:/icons/icons/favicon.png</iconset>
+  </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="verticalLayout_6">
     <item>

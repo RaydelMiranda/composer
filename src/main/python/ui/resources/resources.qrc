@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="icons">
+    <file>icons/favicon.png</file>
     <file>icons/icons8-cupón-para-recortar-50.png</file>
     <file>icons/icons8-zoom-para-extensión-50.png</file>
   </qresource>
