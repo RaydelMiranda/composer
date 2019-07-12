@@ -97,7 +97,10 @@ class Composition:
 
         :return: The path for the generated image.
         """
-        crop_layer = None  # self._template.get_zoom_selection_layer()
+        crop_layer = self._template.get_zoom_selection_layer()
+
+        if not crop_layer:
+            return
 
         foreground = self.extract_zoom_foreground()
         backdrop = self.extract_zoom_backdrop()
