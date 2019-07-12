@@ -2,6 +2,9 @@ import logging
 from collections import defaultdict
 from ctypes import c_void_p, c_wchar_p
 from gettext import gettext as _
+from tempfile import TemporaryFile
+
+from io import BytesIO
 
 import itertools
 import re
@@ -96,33 +99,63 @@ class Composition:
         """
         crop_layer = None  # self._template.get_zoom_selection_layer()
 
-        self.extract_zoom_foreground()
-        self.extract_zoom_backdrop()
+        foreground = self.extract_zoom_foreground()
+        backdrop = self.extract_zoom_backdrop()
 
-        # Scaled size
-        new_width = settings.adaptive_resize_width
-        new_height = settings.adaptive_resize_height
+        with Image(file=backdrop) as bg:
 
-        with Image(filename="/tmp/kkk.jpg") as bg:
-            with Image(filename="/tmp/jjj.png") as fg:
+            with Image(file=foreground) as fg:
+
                 bg.composite(fg)
-                bg.save(filename="/tmp/lll.jpg")
 
-    def extract_zoom_foreground(self) -> Path:
+                with TemporaryFile('w+b') as temporary_svg:
+
+                    bg.save(file=temporary_svg)
+                    temporary_svg.seek(0)
+
+                    with Image(file=temporary_svg) as image:
+
+                        library.MagickSetOption(image.wand, 'webp:lossless', 'true')
+                        library.MagickSetOption(image.wand, 'webp:alpha-quality', '100')
+                        library.MagickSetOption(image.wand, 'webp:emulate-jpeg-size', 'true')
+                        library.MagickSetOption(image.wand, 'webp:method', '6')
+
+                        image.compression_quality = 99
+
+                        new_width = settings.adaptive_resize_width
+                        new_height = settings.adaptive_resize_height
+
+                        # If just one of the size is 0, scale to keep aspect ratio.
+                        if (new_height + new_width) != (new_height or new_width):
+                            # Both are different from 0
+                            image.adaptive_resize(columns=new_width, rows=new_height)
+                        else:
+                            # One of them is 0.
+                            if new_height == 0:
+                                factor = new_width / image.width
+                            else:
+                                factor = new_height / image.height
+
+                            image.adaptive_resize(columns=int(image.width * factor), rows=int(image.height * factor))
+
+                        if options.unsharp:
+                            image.unsharp_mask(radius=0, sigma=1, amount=1, threshold=0)
+                            image.adaptive_sharpen(0.5, 2.5)
+
+                        name = source_image.name.replace(source_image.suffix, '.zoom.webp')
+                        output_file_path = source_image.parent.joinpath(name)
+
+                        if options.override_images and output_file_path.exists():
+                            output_file_path.unlink()
+
+                        image.save(filename=str(output_file_path))
+
+    def extract_zoom_foreground(self) -> BytesIO:
 
         # Get foreground image.
         with Image(filename=str(self.primary_item.image_path)) as original_image:
-            # Original image size
-            original_width = original_image.width
-            original_height = original_image.height
-
-            # Scaled size
-            new_width = settings.adaptive_resize_width
-            new_height = settings.adaptive_resize_height
-
             # Items and layers.
             zoom_layer = self._template.get_zoom_selection_layer()
-            zoom_item = self._template.get_item_for_layer(zoom_layer)
 
             primary_layer = self._template.get_primary_layer()
             primary_item = self._template.get_item_for_layer(primary_layer)
@@ -145,45 +178,27 @@ class Composition:
             if bottom > original_image.height:
                 bottom = original_image.height
 
-            if right > original_width:
+            if right > original_image.width:
                 right = original_image.width
 
             with original_image.clone() as image:
+
+                result = BytesIO()
+
                 image.crop(
                     int(dx), int(dy),
                     int(right), int(bottom)
                 )
-                image.save(filename="/tmp/jjj.png")
+                image.save(file=result)
+                result.seek(0)
+                return result
 
-    def extract_zoom_backdrop(self) -> Path:
+    def extract_zoom_backdrop(self) -> BytesIO:
 
         zoom_layer = self._template.get_zoom_selection_layer()
 
         # Get background original image.
         with Image(filename=str(self._template.background)) as original_background:
-
-            # Original image size
-            original_width = original_background.width
-            original_height = original_background.height
-
-            # Scaled size
-            new_width = settings.adaptive_resize_width
-            new_height = settings.adaptive_resize_height
-
-            # One of the scaled dimension can be specified as 0 mining it must adjust adjust
-            # automatically in order to keep aspect ratio. Is that the case, find the other.
-            if (new_height + new_width) == (new_height or new_width):
-                # One of them is Zero.
-                kar_value = revalue_zero_dimension(original_width, original_height, new_width, new_height)
-                if new_width == 0:
-                    new_width = kar_value
-                else:
-                    new_height = kar_value
-
-            # Find scale factors.
-            h_scale_factor = original_height / new_height
-            w_scale_factor = original_width / new_width
-
             # Scaled rect.
             pos = zoom_layer.pos
             left, top, = pos.x, pos.y
@@ -191,11 +206,15 @@ class Composition:
 
             # Crop image.
             with original_background.clone() as background_clone:
+                result = BytesIO()
+
                 background_clone.crop(
                     int(left), int(top),
                     int(right), int(bottom)
                 )
-                background_clone.save(filename="/tmp/kkk.jpg")
+                background_clone.save(file=result)
+                result.seek(0)
+                return result
 
     def __str__(self):
         end_line = "\n"
