@@ -1,8 +1,10 @@
-from PyQt5.QtCore import Qt, pyqtSignal, QPointF, QSize, QPoint, QRectF, QSizeF, QRect
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QErrorMessage, QRubberBand, QGraphicsColorizeEffect
+from PyQt5.QtCore import Qt, pyqtSignal, QPointF, QPoint
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QErrorMessage
 from pathlib import Path
+from wand.image import Image
 
+from composer_core.composer.common import Rectangle, min_resize
+from composer_core.config import settings
 from models.template import Template, LayerType, Position, Size, NoBaseSvgError
 from ui.common import BACKGROUND, PRESENTATION, PRIMARY, SECONDARY, SVG_SCALE_FACTOR
 
@@ -49,13 +51,14 @@ class ComposerGraphicScene(QGraphicsScene):
     def dropEvent(self, ev):
 
         item = None
-        text = None
         origin = None
+        path = None
 
         if ev.mimeData().hasText():
             text = ev.mimeData().text()
 
-            origin, _ = text.split(',')
+            origin, path = text.split(',')
+            path = Path(path)
 
         if ev.mimeData().hasImage():
             pixmap = ev.mimeData().imageData()
@@ -95,12 +98,38 @@ class ComposerGraphicScene(QGraphicsScene):
                 scene_pos = ev.scenePos()
 
                 item.setPos(QPointF(abs(scene_pos.x() - dx), abs(scene_pos.y() - dy)))
+            else:
+                # Modify the background aspect ratio in order to match the aspect ratio for
+                # the desired size.
+                desired_size_width = settings.adaptive_resize_width
+                desired_size_height = settings.adaptive_resize_height
+
+                if not (desired_size_height == 0 or desired_size_width == 0):
+                    ratio = desired_size_width / desired_size_height
+
+                    with Image(filename=str(path)) as original_background:
+                        r = Rectangle(original_background.width, original_background.height)
+                        r_resize = min_resize(r, ratio)
+                        original_background.liquid_rescale(int(r_resize.width), int(r_resize.height))
+
+                        root_dir = Path(settings.output_path)
+                        backgrounds_dir = root_dir.joinpath(BACKGROUND)
+                        backgrounds_dir.mkdir(exist_ok=True)
+
+                        name = path.name.replace(path.suffix, f".fixed{ path.suffix}")
+
+                        path = backgrounds_dir.joinpath(name)
+
+                        original_background.save(filename=str(path))
 
             self.addItem(item)
 
+            if origin == BACKGROUND:
+                self.show_grid()
+
             self.parent().fitInView(self.sceneRect(), Qt.KeepAspectRatio)
 
-        self.process_dropped_data(item, text)
+        self.process_dropped_data(item, origin=origin, path=path)
 
     def dragMoveEvent(self, ev):
         ev.accept()
@@ -119,13 +148,15 @@ class ComposerGraphicScene(QGraphicsScene):
                 self.removeItem(item)
         return super(ComposerGraphicScene, self).keyPressEvent(event)
 
-    def process_dropped_data(self, item, text):
+    def process_dropped_data(self, item, origin: str, path: Path):
         """
         Create the new layers according the given item, this layers are mapped then to the item
         in order to update if necessary when rendering the whole svg.
 
+        :param path: path to the real image being processed.
+        :param origin: String containing the origin of the item, one of
+                        "BACKGROUND", "PRESENTATION", "PRIMARY", "SECONDARY"
         :param item:  A QGraphicsItem.
-        :param text: A string containing the <origin,path> of the dropped data.
         """
 
         layer_type_origin_map = {
@@ -134,10 +165,6 @@ class ComposerGraphicScene(QGraphicsScene):
             SECONDARY: LayerType.SECONDARY
         }
 
-        origin, path = text.split(',')
-
-        print(f'Origin: {origin}, Path: {path}')
-
         bounding_rect = item.boundingRect()
 
         pos = Position(item.x() * SVG_SCALE_FACTOR, item.y() * SVG_SCALE_FACTOR, item.zValue())
@@ -145,7 +172,7 @@ class ComposerGraphicScene(QGraphicsScene):
         size = Size(bounding_rect.width() * SVG_SCALE_FACTOR, bounding_rect.height() * SVG_SCALE_FACTOR)
 
         if origin == BACKGROUND:
-            self.__template.set_background(path, size=size)
+            self.__template.set_background(str(path), size=size)
         else:
             try:
                 layer = self.__template.add_layer(pos=pos, size=size, _type=layer_type_origin_map[origin])
@@ -161,3 +188,19 @@ class ComposerGraphicScene(QGraphicsScene):
 
     def set_output_dir(self, path: str):
         self.__template.output_dir = path
+
+    def show_grid(self):
+
+        w = int(self.width())
+        h = int(self.height())
+
+        w_step = int(w / 3)
+        h_step = int(h / 3)
+
+        # Add vertical lines
+        for x in range(0, w, w_step):
+            self.addLine(x, 0, x, h)
+
+        # Add horizontal lines.
+        for y in range(0, h, h_step):
+            self.addLine(0, y, w, y)
