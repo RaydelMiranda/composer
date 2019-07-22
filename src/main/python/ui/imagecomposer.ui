@@ -674,6 +674,13 @@
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_8">
              <item>
+              <widget class="QCheckBox" name="secondary_generation">
+               <property name="text">
+                <string>Secondary generation</string>
+               </property>
+              </widget>
+             </item>
+             <item>
               <widget class="QCheckBox" name="apply_unsharp">
                <property name="text">
                 <string>Apply unsharp</string>

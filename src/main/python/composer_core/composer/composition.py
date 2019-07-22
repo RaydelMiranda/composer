@@ -74,7 +74,11 @@ class Composition:
         :return: The path of the resulting image.
         """
 
-        composition_file_name = compute_output_name(self, presentation_code_pattern=settings.presentation_code_pattern)
+        composition_file_name = compute_output_name(
+            self,
+            presentation_code_pattern=settings.presentation_code_pattern,
+            append_bg_name_as_suffix=settings.secondary_generation
+        )
         output_file_name = output_path.joinpath(composition_file_name)
 
         result = compose(self._items, self._template, options, output=output_file_name)
@@ -361,6 +365,10 @@ class Composition:
         if not full_path.exists():
             shutil.copy(background_path, full_path)
 
+    @property
+    def template(self):
+        return self._template
+
 
 class CompositionBuilder:
     """
@@ -448,7 +456,8 @@ def compute_output_name(
         composition: Composition, extension='webp',
         primary_product_code_pattern=r'.*',
         presentation_code_pattern='.*',
-        secondary_product_code_pattern='.*'):
+        secondary_product_code_pattern='.*',
+        append_bg_name_as_suffix=False):
     # Process main product.
     main_product_name = despeluze_item_name(composition.primary_item)
     main_product_name = main_product_name.split('_')[0]
@@ -497,4 +506,13 @@ def compute_output_name(
         [main_product_name, presentation_name, "_".join(_secondary_products)]
     )
 
-    return f"{'_'.join(name_components)}.{extension}"
+    result = f"{'_'.join(name_components)}.{extension}"
+
+    if append_bg_name_as_suffix:
+        background_path = composition.template.background
+        bg_name = background_path.name.replace(background_path.suffix, '')
+
+        result_path = Path(result)
+        result = result.replace(result_path.suffix, f'.{bg_name}{result_path.suffix}')
+
+    return result

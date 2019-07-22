@@ -87,6 +87,7 @@ class Composer(QMainWindow):
 
         # Connect conf widgets.
         self.ui.apply_unsharp.clicked.connect(self.__settings_changed)
+        self.ui.secondary_generation.clicked.connect(self.__settings_changed)
         self.ui.override_images.clicked.connect(self.__settings_changed)
 
     def __load_settings(self):
@@ -112,6 +113,10 @@ class Composer(QMainWindow):
         # Image result settings.
         self.ui.image_result_width.setValue(self.__settings.adaptive_resize_width)
         self.ui.image_result_height.setValue(self.__settings.adaptive_resize_height)
+
+        self.ui.secondary_generation.setChecked(self.__settings.secondary_generation)
+
+
 
         # Setting output dir.
         try:
@@ -157,6 +162,8 @@ class Composer(QMainWindow):
         self.__settings.set_config_value("backgrounds_path", self.ui.backgrounds_path.text() or f'{pwd}')
 
         self.__settings.set_config_value("unsharp", str(self.ui.apply_unsharp.isChecked()))
+        self.__settings.set_config_value("secondary_generation", str(self.ui.secondary_generation.isChecked()))
+
         self.__settings.set_config_value("override_target_files", str(self.ui.override_images.isChecked()))
 
         self.__settings.set_config_value("bucket_name", self.ui.bucket_name.text())

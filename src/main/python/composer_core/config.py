@@ -50,6 +50,7 @@ if not os.path.exists(CONFIG_FILE):
     config.set('composer', 'backgrounds_path', 'backgrounds')
 
     config.set('composer', 'upload_to_s3', 'True')
+    config.set('composer', 'secondary_generation', 'False')
 
     if not os.path.exists(CONF_DIR):
         os.mkdir(CONF_DIR)
@@ -118,6 +119,18 @@ class ConfigHelper(object):
     @property
     def unsharp(self):
         return self.get_config_boolean('unsharp')
+
+    @property
+    def secondary_generation(self):
+        try:
+            result = self.get_config_boolean('secondary_generation')
+        except configparser.NoOptionError:
+            config.set('composer', 'secondary_generation', 'False')
+            self.save()
+            return False
+        else:
+            return result
+
 
     @property
     def num_threads(self):
