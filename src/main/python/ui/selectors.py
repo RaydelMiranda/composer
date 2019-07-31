@@ -26,7 +26,7 @@ class Selector(QGraphicsRectItem):
         handle_bottom_right: Qt.SizeFDiagCursor,
     }
 
-    def __init__(self, *args, rgb=(255, 0, 0), handle_size=+8.0, handle_space=-4.0):
+    def __init__(self, *args, rgb=(255, 0, 0), handle_size=+8.0, handle_space=-4.0, aspect_ratio=None):
         """
         Initialize the shape.
         """
@@ -39,6 +39,7 @@ class Selector(QGraphicsRectItem):
         self.handle_selected = None
         self.mouse_press_pos = None
         self.mouse_press_rect = None
+        self.aspect_ratio = aspect_ratio
         self.rgb = rgb
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.ItemIsMovable, True)
@@ -149,7 +150,6 @@ class Selector(QGraphicsRectItem):
             bounding_rect.setTop(to_y)
             rect.setLeft(bounding_rect.left() + offset)
             rect.setTop(bounding_rect.top() + offset)
-            self.setRect(rect)
 
         elif self.handle_selected == self.handle_top_middle:
 
@@ -158,7 +158,6 @@ class Selector(QGraphicsRectItem):
             diff.setY(to_y - from_y)
             bounding_rect.setTop(to_y)
             rect.setTop(bounding_rect.top() + offset)
-            self.setRect(rect)
 
         elif self.handle_selected == self.handle_top_right:
 
@@ -172,7 +171,6 @@ class Selector(QGraphicsRectItem):
             bounding_rect.setTop(to_y)
             rect.setRight(bounding_rect.right() - offset)
             rect.setTop(bounding_rect.top() + offset)
-            self.setRect(rect)
 
         elif self.handle_selected == self.handle_middle_left:
 
@@ -181,7 +179,6 @@ class Selector(QGraphicsRectItem):
             diff.setX(to_x - from_x)
             bounding_rect.setLeft(to_x)
             rect.setLeft(bounding_rect.left() + offset)
-            self.setRect(rect)
 
         elif self.handle_selected == self.handle_middle_right:
             from_x = self.mouse_press_rect.right()
@@ -189,7 +186,6 @@ class Selector(QGraphicsRectItem):
             diff.setX(to_x - from_x)
             bounding_rect.setRight(to_x)
             rect.setRight(bounding_rect.right() - offset)
-            self.setRect(rect)
 
         elif self.handle_selected == self.handle_bottom_left:
 
@@ -203,7 +199,6 @@ class Selector(QGraphicsRectItem):
             bounding_rect.setBottom(to_y)
             rect.setLeft(bounding_rect.left() + offset)
             rect.setBottom(bounding_rect.bottom() - offset)
-            self.setRect(rect)
 
         elif self.handle_selected == self.handle_bottom_middle:
 
@@ -212,7 +207,6 @@ class Selector(QGraphicsRectItem):
             diff.setY(to_y - from_y)
             bounding_rect.setBottom(to_y)
             rect.setBottom(bounding_rect.bottom() - offset)
-            self.setRect(rect)
 
         elif self.handle_selected == self.handle_bottom_right:
 
@@ -226,7 +220,11 @@ class Selector(QGraphicsRectItem):
             bounding_rect.setBottom(to_y)
             rect.setRight(bounding_rect.right() - offset)
             rect.setBottom(bounding_rect.bottom() - offset)
-            self.setRect(rect)
+
+        if self.aspect_ratio:
+            rect.setHeight(rect.width() / self.aspect_ratio)
+
+        self.setRect(rect)
 
         self.updateHandlesPos()
 

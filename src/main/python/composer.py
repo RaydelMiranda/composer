@@ -66,16 +66,7 @@ class Composer(QMainWindow):
         self.__settings = settings
         self.__loading_settings = False
 
-        self.ui.output_path.editingFinished.connect(self.on_output_path_changed)
-        self.ui.bucket_name.textChanged.connect(self.__settings_changed)
-        self.ui.upload_to_s3.clicked.connect(self.__settings_changed)
-
-        self.ui.secret_access_key.textChanged.connect(self.__settings_changed)
-        self.ui.access_key.textChanged.connect(self.__settings_changed)
-
-        self.ui.image_result_width.valueChanged.connect(self.__settings_changed)
-        self.ui.image_result_height.valueChanged.connect(self.__settings_changed)
-
+        self.__connect_controls_events()
         self.__prepare_list_views()
         self.__prepare_graphic_view()
         self.__prepare_property_controls()
@@ -104,6 +95,10 @@ class Composer(QMainWindow):
         self.ui.apply_unsharp.setChecked(self.__settings.unsharp)
         self.ui.override_images.setChecked(self.__settings.override_target_files)
 
+        self.ui.aspect_ratio_switch.setChecked(self.__settings.force_zoom_ar)
+        self.ui.aspect_ratio_x.setValue(self.__settings.zoom_ar_x)
+        self.ui.aspect_ratio_y.setValue(self.__settings.zoom_ar_y)
+
         # Loading image resource lists according conf.
         self.ui.pproducts_view_model.setRootPath(self.ui.main_products_path.text())
         self.ui.sproducts_view_model.setRootPath(self.ui.secondary_products_path.text())
@@ -115,8 +110,6 @@ class Composer(QMainWindow):
         self.ui.image_result_height.setValue(self.__settings.adaptive_resize_height)
 
         self.ui.secondary_generation.setChecked(self.__settings.secondary_generation)
-
-
 
         # Setting output dir.
         try:
@@ -175,6 +168,10 @@ class Composer(QMainWindow):
         self.__settings.set_config_value("adaptive_resize_width", str(self.ui.image_result_width.value()))
         self.__settings.set_config_value("adaptive_resize_height", str(self.ui.image_result_height.value()))
 
+        self.__settings.set_config_value("zoom_ar_x", str(self.ui.aspect_ratio_x.value()))
+        self.__settings.set_config_value("zoom_ar_y", str(self.ui.aspect_ratio_y.value()))
+        self.__settings.set_config_value("force_zoom_ar", str(self.ui.aspect_ratio_switch.isChecked()))
+
         self.__settings.save()
 
     def __prepare_graphic_view(self):
@@ -225,6 +222,21 @@ class Composer(QMainWindow):
 
         assert len(items) == 1
         return items[0]
+
+    def __connect_controls_events(self):
+        self.ui.output_path.editingFinished.connect(self.on_output_path_changed)
+        self.ui.bucket_name.textChanged.connect(self.__settings_changed)
+        self.ui.upload_to_s3.clicked.connect(self.__settings_changed)
+
+        self.ui.secret_access_key.textChanged.connect(self.__settings_changed)
+        self.ui.access_key.textChanged.connect(self.__settings_changed)
+
+        self.ui.image_result_width.valueChanged.connect(self.__settings_changed)
+        self.ui.image_result_height.valueChanged.connect(self.__settings_changed)
+
+        self.ui.aspect_ratio_switch.clicked.connect(self.__settings_changed)
+        self.ui.aspect_ratio_x.valueChanged.connect(self.__settings_changed)
+        self.ui.aspect_ratio_y.valueChanged.connect(self.__settings_changed)
 
     @pyqtSlot()
     def busy_mode(self):
@@ -466,16 +478,21 @@ class Composer(QMainWindow):
     def on_area_zoom_action_toggled(self, value):
 
         if value:
-
             scene_rect = self.ui.preview_scene.sceneRect()
 
             handle_size = max([scene_rect.width(), scene_rect.height()]) * 0.01
             handle_space = handle_size / -2
 
+            if self.ui.aspect_ratio_switch.isChecked():
+                aspect_ratio = self.ui.aspect_ratio_x.value() / self.ui.aspect_ratio_y.value()
+            else:
+                aspect_ratio = None
+
             self.ui.preview_scene.zoom_selector = Selector(
                 handle_size, handle_size, scene_rect.width() * 0.25, scene_rect.height() * 0.25,
-                handle_size=handle_size, handle_space=handle_space
+                handle_size=handle_size, handle_space=handle_space, aspect_ratio=aspect_ratio
             )
+
             self.ui.preview_scene.addItem(self.ui.preview_scene.zoom_selector)
 
             layer = self._add_selector_layer(self.ui.preview_scene.zoom_selector, LayerType.ZOOM_SELECTION)

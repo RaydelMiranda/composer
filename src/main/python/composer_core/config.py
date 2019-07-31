@@ -52,6 +52,10 @@ if not os.path.exists(CONFIG_FILE):
     config.set('composer', 'upload_to_s3', 'True')
     config.set('composer', 'secondary_generation', 'False')
 
+    config.set('composer', 'zoom_ar_x', '18')
+    config.set('composer', 'zoom_ar_y', '9')
+    config.set('composer', 'force_zoom_ar', 'False')
+
     if not os.path.exists(CONF_DIR):
         os.mkdir(CONF_DIR)
 
@@ -131,6 +135,32 @@ class ConfigHelper(object):
         else:
             return result
 
+    @property
+    def force_zoom_ar(self):
+        try:
+            return self.get_config_boolean('force_zoom_ar')
+        except configparser.NoOptionError:
+            config.set('composer', 'force_zoom_ar', 'False')
+            self.save()
+            return False
+
+    @property
+    def zoom_ar_x(self):
+        try:
+            return self.get_config_int('zoom_ar_x')
+        except configparser.NoOptionError:
+            config.set('composer', 'zoom_ar_x', '18')
+            self.save()
+            return 18
+
+    @property
+    def zoom_ar_y(self):
+        try:
+            return self.get_config_int('zoom_ar_y')
+        except configparser.NoOptionError:
+            config.set('composer', 'zoom_ar_y', '9')
+            self.save()
+            return 9
 
     @property
     def num_threads(self):
