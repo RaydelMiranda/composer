@@ -112,6 +112,15 @@ class Composition:
         with Image(file=backdrop) as bg:
 
             with Image(file=foreground) as fg:
+                # Compute scale factor for.
+                primary_layer = self._template.get_primary_layer()
+                primary_item = self._template.get_item_for_layer(primary_layer)
+                primary_item_scale_factor = primary_item.scale()
+
+                bg.resize(
+                    int(bg.width / primary_item_scale_factor),
+                    int(bg.height / primary_item_scale_factor)
+                )
 
                 bg.composite(fg)
 
@@ -176,11 +185,11 @@ class Composition:
             dx = (0 if dx < 0 else dx) / primary_item_scale_factor
             dy = (0 if dy < 0 else dy) / primary_item_scale_factor
 
-            real_dh = primary_layer.height / primary_item_scale_factor
-            real_dw = primary_layer.width / primary_item_scale_factor
+            # real_dh = primary_layer.height / primary_item_scale_factor
+            # real_dw = primary_layer.width / primary_item_scale_factor
 
-            bottom = dy + real_dh
-            right = dx + real_dw
+            bottom = dy + (zoom_layer.height / primary_item_scale_factor)
+            right = dx + (zoom_layer.width / primary_item_scale_factor)
 
             if bottom > original_image.height:
                 bottom = original_image.height
