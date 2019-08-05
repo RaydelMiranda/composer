@@ -42,7 +42,7 @@ class LoadingImagesWorker(QObject):
                 new_resource = Resource(
                     path=file_name,
                     image=QPixmap(file_name),
-                    thumbnail=QPixmap(file_name).scaled(190, 190, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    thumbnail=QPixmap(file_name).scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 )
 
                 self.resource_loaded.emit(new_resource)
