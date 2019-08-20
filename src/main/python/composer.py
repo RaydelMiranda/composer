@@ -111,6 +111,10 @@ class Composer(QMainWindow):
 
         self.ui.secondary_generation.setChecked(self.__settings.secondary_generation)
 
+        self.ui.include_presentation_items.setChecked(self.__settings.include_presentation_items)
+        self.ui.include_secondary_items.setChecked(self.__settings.include_secondary_items)
+
+
         # Setting output dir.
         try:
             self.ui.preview_scene.set_output_dir(self.ui.output_path.text())
@@ -171,6 +175,9 @@ class Composer(QMainWindow):
         self.__settings.set_config_value("zoom_ar_x", str(self.ui.aspect_ratio_x.value()))
         self.__settings.set_config_value("zoom_ar_y", str(self.ui.aspect_ratio_y.value()))
         self.__settings.set_config_value("force_zoom_ar", str(self.ui.aspect_ratio_switch.isChecked()))
+
+        self.__settings.set_config_value("include_secondary_items", str(self.ui.include_secondary_items.isChecked()))
+        self.__settings.set_config_value("include_presentation_items", str(self.ui.include_presentation_items.isChecked()))
 
         self.__settings.save()
 
@@ -237,6 +244,9 @@ class Composer(QMainWindow):
         self.ui.aspect_ratio_switch.clicked.connect(self.__settings_changed)
         self.ui.aspect_ratio_x.valueChanged.connect(self.__settings_changed)
         self.ui.aspect_ratio_y.valueChanged.connect(self.__settings_changed)
+
+        self.ui.include_presentation_items.clicked.connect(self.__settings_changed)
+        self.ui.include_secondary_items.clicked.connect(self.__settings_changed)
 
     @pyqtSlot()
     def busy_mode(self):

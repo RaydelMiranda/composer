@@ -81,6 +81,28 @@ class ConfigHelper(object):
             self.__config.write(config_file)
 
     @property
+    def include_secondary_items(self):
+        try:
+            result = self.get_config_boolean('include_secondary_items')
+        except configparser.NoOptionError:
+            config.set('composer', 'include_secondary_items', 'True')
+            self.save()
+            return True
+        else:
+            return result
+
+    @property
+    def include_presentation_items(self):
+        try:
+            result = self.get_config_boolean('include_presentation_items')
+        except configparser.NoOptionError:
+            config.set('composer', 'include_presentation_items', 'True')
+            self.save()
+            return True
+        else:
+            return result
+
+    @property
     def s3_access_key(self):
         return self.get_config('s3_access_key')
 

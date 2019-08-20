@@ -11,7 +11,7 @@ import re
 import shutil
 from colorama import Fore, Style
 from pathlib import Path
-from typing import Generator, Callable, Union
+from typing import Generator, Callable, Union, Optional
 from wand.api import library
 from wand.image import Image
 
@@ -270,10 +270,12 @@ class Composition:
         return items[0]
 
     @property
-    def presentation_item(self) -> CompositionItem:
+    def presentation_item(self) -> Optional[CompositionItem]:
         items = self.filter_items(lambda x: x.layer.type == LayerType.PRESENTATION)
         if len(items) > 1:
             raise CompositionError(_("Found more that one presentation item. It should be only one."))
+        if len(items) == 0:
+            return None
         return items[0]
 
     @property
@@ -331,6 +333,9 @@ class Composition:
         return result.filename
 
     def save_presentation(self, root_dir: Path):
+
+        if not self.presentation_item:
+            return
 
         presentation_image_path = Path(self.presentation_item.image_path)
         presentations_dir = root_dir.joinpath(PRESENTATION)
@@ -407,19 +412,40 @@ class CompositionBuilder:
         """
 
         primary_items = self.build_primary_items()
-        secondary_items = self.build_secondary_items()
-        presentation_items = self.build_presentation_items()
 
-        primary_presentation_combos = itertools.product(primary_items, presentation_items)
-        secondary_combos = itertools.combinations(secondary_items, len(self._template.get_secondary_layers()))
+        if settings.include_presentation_items:
+            presentation_items = self.build_presentation_items()
+        else:
+            presentation_items = None
+
+        if settings.include_secondary_items:
+            secondary_items = self.build_secondary_items()
+        else:
+            secondary_items = None
+
+        if presentation_items:
+            primary_presentation_combos = itertools.product(primary_items, presentation_items)
+        else:
+            primary_presentation_combos = primary_items
+
+        if secondary_items:
+            secondary_combos = itertools.combinations(secondary_items, len(self._template.get_secondary_layers()))
+        else:
+            secondary_combos = [None]
 
         for combo in itertools.product(primary_presentation_combos, secondary_combos):
             primary_and_presentation = combo[0]
+
+            if not presentation_items:
+                primary_and_presentation = list([primary_and_presentation])
+
             secondaries = combo[1]
 
             # Add selection items (zoom, crop, ...)  to all compositions.
-
-            all_ = list(itertools.chain(primary_and_presentation, secondaries))
+            if secondaries is not None and len(secondaries) > 0:
+                all_ = list(itertools.chain(primary_and_presentation, secondaries))
+            else:
+                all_ = primary_and_presentation
 
             yield Composition(self._template, all_)
 
@@ -482,7 +508,11 @@ def compute_output_name(
         logger.warning(Style.RESET_ALL)
 
     # Do the same for background
-    presentation_name = despeluze_item_name(composition.presentation_item)
+    if composition.presentation_item:
+        presentation_name = despeluze_item_name(composition.presentation_item)
+    else:
+        presentation_name = ""
+
     presentation_name_match = re.match(presentation_code_pattern, presentation_name)
 
     if presentation_name_match:
