@@ -498,8 +498,13 @@ class Composer(QMainWindow):
             else:
                 aspect_ratio = None
 
+            # Set the selection box to the correct aspect ratio.
+            ar = self.ui.aspect_ratio_x.value() / self.ui.aspect_ratio_y.value()
+            width = scene_rect.width() * 0.25
+            height = width / ar
+
             self.ui.preview_scene.zoom_selector = Selector(
-                handle_size, handle_size, scene_rect.width() * 0.25, scene_rect.height() * 0.25,
+                handle_size, handle_size, width, height,
                 handle_size=handle_size, handle_space=handle_space, aspect_ratio=aspect_ratio
             )
 
