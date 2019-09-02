@@ -185,9 +185,6 @@ class Composition:
             dx = (0 if dx < 0 else dx) / primary_item_scale_factor
             dy = (0 if dy < 0 else dy) / primary_item_scale_factor
 
-            # real_dh = primary_layer.height / primary_item_scale_factor
-            # real_dw = primary_layer.width / primary_item_scale_factor
-
             bottom = dy + (zoom_layer.height / primary_item_scale_factor)
             right = dx + (zoom_layer.width / primary_item_scale_factor)
 

@@ -36,6 +36,9 @@ class ComposerGraphicScene(QGraphicsScene):
         self._rubber_band = None
         self._rubber_band_origin = QPoint(0, 0)
 
+        self.__template_layer_item_map = {}
+        self.__grid_items = []
+
     @property
     def template(self):
         return self.__template
@@ -125,9 +128,15 @@ class ComposerGraphicScene(QGraphicsScene):
             self.addItem(item)
 
             if origin == BACKGROUND:
-                self.show_grid()
+                self.__background_item = item
+                self.setSceneRect(item.boundingRect())
 
             self.parent().fitInView(self.sceneRect(), Qt.KeepAspectRatio)
+
+            if origin == BACKGROUND:
+                # We need to show the grid AFTER the background has been scaled to
+                # fit the scene.
+                self.show_grid()
 
         self.process_dropped_data(item, origin=origin, path=path)
 
@@ -145,6 +154,12 @@ class ComposerGraphicScene(QGraphicsScene):
         if event.key() == Qt.Key_Delete:
             items = self.selectedItems()
             for item in items:
+                if self.__background_item == item:
+                    self.__template.remove_background()
+                    self.__background_item = None
+                    self.remove_grid()
+                else:
+                    self.__template.remove_layer_for_item(item)
                 self.removeItem(item)
         return super(ComposerGraphicScene, self).keyPressEvent(event)
 
@@ -189,7 +204,7 @@ class ComposerGraphicScene(QGraphicsScene):
     def set_output_dir(self, path: str):
         self.__template.output_dir = path
 
-    def show_grid(self):
+    def show_grid(self) -> None:
 
         w = int(self.width())
         h = int(self.height())
@@ -199,8 +214,17 @@ class ComposerGraphicScene(QGraphicsScene):
 
         # Add vertical lines
         for x in range(0, w, w_step):
-            self.addLine(x, 0, x, h)
+            line = self.addLine(x, 0, x, h)
+            self.__grid_items.append(line)
 
         # Add horizontal lines.
         for y in range(0, h, h_step):
-            self.addLine(0, y, w, y)
+            line = self.addLine(0, y, w, y)
+            self.__grid_items.append(line)
+
+    def remove_grid(self):
+        for item in self.__grid_items:
+            self.removeItem(item)
+
+        del self.__grid_items
+        self.__grid_items = []

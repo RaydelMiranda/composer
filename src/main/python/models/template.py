@@ -356,6 +356,10 @@ class Template:
         except Exception as err:
             logger.exception(err)
 
+    def remove_background(self):
+        self.__background = None
+        self.__base_svg = None
+
     def update_layer(self, item):
         layer = self.__layer_map_to_item.get(item)
 
