@@ -67,10 +67,12 @@ CompositionRenderResult = namedtuple('CompositionRenderResult', 'filename, svg_p
 
 def compose(
         items: [CompositionItem], template: Template, options: GenerationOptions,
-        output: Path, verbose=False) -> CompositionRenderResult:
+        output: Path, verbose=False, svg_output_path: Path = None) -> CompositionRenderResult:
     """
     Compose images from combinations of a set of images and a template.
 
+    :param svg_output_path: The path to the directory where to save svg for this composition, if None, svg is saved
+                            in the same directory as composition.
     :param options: A named tuple containing several configurable options for rendering.
     :param items: A list compositions items.
     :param template: The template.
@@ -109,7 +111,12 @@ def compose(
         svg_image[0].attrib['style'] = "overflow:visible;opacity:100;"
 
     output_file_path = output
-    svg_file_name = str(output_file_path).replace(output_file_path.suffix, '.svg')
+    if svg_output_path is None:
+        svg_file_name = str(output_file_path).replace(output_file_path.suffix, '.svg')
+    else:
+        filename = output_file_path.name
+        svg_file_name = str(filename).replace(output_file_path.suffix, '.svg')
+        svg_file_name = svg_output_path.joinpath(svg_file_name)
 
     with open(svg_file_name, 'wb') as svg_file:
 

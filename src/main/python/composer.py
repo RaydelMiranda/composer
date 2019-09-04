@@ -38,11 +38,16 @@ class ComposeWorker(QObject):
         self._compositions = compositions
         self._options = options
         self._output_path = output_path
+        self._svg_output_path = output_path.joinpath('LINE-PRODUCTS-SVG')
+
+        if not self._svg_output_path.exists():
+            self._svg_output_path.mkdir()
+
 
     def run(self):
         for composition in self._compositions:
             if composition.is_valid():
-                path = composition.save(self._options)
+                path = composition.save(self._options, svg_output_path=self._svg_output_path)
                 self.composition_ready.emit(str(path))
 
         if self._options.upload_to_s3:
@@ -115,7 +120,6 @@ class Composer(QMainWindow):
         self.ui.include_presentation_items.setChecked(self.__settings.include_presentation_items)
         self.ui.include_secondary_items.setChecked(self.__settings.include_secondary_items)
 
-
         # Setting output dir.
         try:
             self.ui.preview_scene.set_output_dir(self.ui.output_path.text())
@@ -178,7 +182,8 @@ class Composer(QMainWindow):
         self.__settings.set_config_value("force_zoom_ar", str(self.ui.aspect_ratio_switch.isChecked()))
 
         self.__settings.set_config_value("include_secondary_items", str(self.ui.include_secondary_items.isChecked()))
-        self.__settings.set_config_value("include_presentation_items", str(self.ui.include_presentation_items.isChecked()))
+        self.__settings.set_config_value("include_presentation_items",
+                                         str(self.ui.include_presentation_items.isChecked()))
 
         self.__settings.save()
 

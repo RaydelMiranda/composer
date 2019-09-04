@@ -63,10 +63,12 @@ class Composition:
         self._items = items
         self._template = template
 
-    def render(self, options: GenerationOptions, output_path: Path = None, ) -> CompositionRenderResult:
+    def render(self, options: GenerationOptions, output_path: Path = None, svg_output_path: Path = None) -> CompositionRenderResult:
         """
         Render this composition into a complete image.
 
+        :param svg_output_path: The path to the directory where to save svg for this composition, if None, svg is saved
+                                in the same directory as composition.
         :param options: Some options passed to the function that actually generates images.
         :param output_path: The directory where to save the resulting image. If not set
                             the current working directory is used.
@@ -81,7 +83,7 @@ class Composition:
         )
         output_file_name = output_path.joinpath(composition_file_name)
 
-        result = compose(self._items, self._template, options, output=output_file_name)
+        result = compose(self._items, self._template, options, output=output_file_name, svg_output_path=svg_output_path)
 
         return result
 
@@ -279,7 +281,7 @@ class Composition:
     def secondary_items(self) -> [CompositionItem]:
         return self.filter_items(lambda x: x.layer.type == LayerType.SECONDARY)
 
-    def save(self, options: GenerationOptions) -> Path:
+    def save(self, options: GenerationOptions, svg_output_path: Path = None) -> Path:
         """
         Method that creates a folder structure ready for sync to s3.
 
@@ -287,7 +289,6 @@ class Composition:
 
         - <product_code>
             | - <composition - code>.webp
-            | - <composition - code>.svg
             | - presentation.png
             | - background.png
 
@@ -295,6 +296,8 @@ class Composition:
         the same product, the same might happen with the background, if that's the case,
         the results are merged.
 
+        :param svg_output_path: The path to the directory where to save svg for this composition, if None, svg is saved
+                            in the same directory as composition.
         :param options: Some options passed to the function that actually generates images.
         """
 
@@ -314,7 +317,7 @@ class Composition:
 
         # Render composition to the desired folder. render method will also save the
         # svg file corresponding to this composition.
-        result = self.render(options, main_product_dir)
+        result = self.render(options, main_product_dir, svg_output_path=svg_output_path)
         self.extract_zoom(result.svg_path, options)
 
         # Save presentation
