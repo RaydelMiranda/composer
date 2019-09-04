@@ -96,7 +96,7 @@ class Composition:
         """
         zoom_layer = self._template.get_zoom_selection_layer()
 
-    def extract_zoom(self, source_image: Path, options: GenerationOptions) -> Union[Path, None]:
+    def extract_zoom(self, source_image: Path, options: GenerationOptions, output_path: Path) -> Union[Path, None]:
         """
         Extract the part of the image selected for use as a square image, this part is specified by
         the crop layer in the template.
@@ -161,7 +161,7 @@ class Composition:
                             image.adaptive_sharpen(0.5, 2.5)
 
                         name = source_image.name.replace(source_image.suffix, '.zoom.webp')
-                        output_file_path = source_image.parent.joinpath(name)
+                        output_file_path = output_path.joinpath(name)
 
                         if options.override_images and output_file_path.exists():
                             output_file_path.unlink()
@@ -318,7 +318,7 @@ class Composition:
         # Render composition to the desired folder. render method will also save the
         # svg file corresponding to this composition.
         result = self.render(options, main_product_dir, svg_output_path=svg_output_path)
-        self.extract_zoom(result.svg_path, options)
+        self.extract_zoom(result.svg_path, options, main_product_dir)
 
         # Save presentation
         self.save_presentation(root_dir)
