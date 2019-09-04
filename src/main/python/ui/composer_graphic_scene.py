@@ -57,6 +57,8 @@ class ComposerGraphicScene(QGraphicsScene):
         origin = None
         path = None
 
+        self.clearSelection()
+
         if ev.mimeData().hasText():
             text = ev.mimeData().text()
 
