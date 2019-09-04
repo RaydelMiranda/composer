@@ -116,7 +116,14 @@ def compose(
     else:
         filename = output_file_path.name
         svg_file_name = str(filename).replace(output_file_path.suffix, '.svg')
-        svg_file_name = svg_output_path.joinpath(svg_file_name)
+        svg_folder_name = svg_file_name.replace('.svg', '')
+
+        svg_folder = svg_output_path.joinpath(svg_folder_name)
+
+        if not svg_folder.exists():
+            svg_folder.mkdir(exist_ok=True)
+
+        svg_file_name = svg_folder.joinpath(svg_file_name)
 
     with open(svg_file_name, 'wb') as svg_file:
 

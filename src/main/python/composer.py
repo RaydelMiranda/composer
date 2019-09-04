@@ -41,7 +41,7 @@ class ComposeWorker(QObject):
         self._svg_output_path = output_path.joinpath('LINE-PRODUCTS-SVG')
 
         if not self._svg_output_path.exists():
-            self._svg_output_path.mkdir()
+            self._svg_output_path.mkdir(exist_ok=True)
 
 
     def run(self):
