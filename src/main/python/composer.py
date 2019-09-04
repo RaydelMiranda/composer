@@ -65,6 +65,7 @@ class Composer(QMainWindow):
         self.ui.setupUi(self)
         self.__settings = settings
         self.__loading_settings = False
+        self.__compositions_quantity = 0
 
         self.__connect_controls_events()
         self.__prepare_list_views()
@@ -419,6 +420,9 @@ class Composer(QMainWindow):
 
     @pyqtSlot()
     def on_generate_button_clicked(self, *args, **kwargs):
+
+        self.busy_mode()
+
         template = self.ui.preview_scene.template
 
         primaries_paths = [Path(resource.path) for resource in self.ui.pproducts_view_model.resources]
@@ -440,9 +444,7 @@ class Composer(QMainWindow):
             bucket_name=self.ui.bucket_name.text()
         )
 
-        self.ui.progressBar.setValue(0)
-        self.ui.progressBar.setMinimum(0)
-        self.ui.progressBar.setMaximum(len(compositions))
+        self.__compositions_quantity = len(compositions)
 
         self._composition_thread = QThread()
         self._composition_worker = ComposeWorker(compositions, options, output_dir)
@@ -461,6 +463,9 @@ class Composer(QMainWindow):
 
     @pyqtSlot(str, name="on_composition_ready")
     def on_composition_ready(self, composition_path):
+        if self.ui.progressBar.maximum() == 0:
+            self.ui.progressBar.setMaximum(self.__compositions_quantity)
+            self.ui.progressBar.setValue(0)
         self.ui.progressBar.setValue(self.ui.progressBar.value() + 1)
 
     @pyqtSlot(name="on_generation_complete")
