@@ -19,6 +19,9 @@ if __name__ == '__main__':
     appctxt = ApplicationContext()       # 1. Instantiate ApplicationContext
     composer = Composer()
     composer.show()
-    exit_code = appctxt.app.exec_()      # 2. Invoke appctxt.app.exec_()
+    try:
+        exit_code = appctxt.app.exec_()      # 2. Invoke appctxt.app.exec_()
+    except Exception as err:
+        logging.exception(err)
     logging.info("Closing composer ...")
     sys.exit(exit_code)
