@@ -53,6 +53,10 @@ def revalue_zero_dimension(
         return original_height * (new_width / original_width)
 
 
+class ExtractingZoomError(Exception):
+    pass
+
+
 class Composition:
     """
     A class that represents a whole composition. This means the template plus
@@ -108,8 +112,12 @@ class Composition:
         if not crop_layer:
             return
 
-        foreground = self.extract_zoom_foreground()
-        backdrop = self.extract_zoom_backdrop()
+        try:
+            foreground = self.extract_zoom_foreground()
+            backdrop = self.extract_zoom_backdrop()
+        except Exception as err:
+            logger.exception(err)
+            raise ExtractingZoomError
 
         with Image(file=backdrop) as bg:
 

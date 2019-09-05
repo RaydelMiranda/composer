@@ -1,13 +1,14 @@
+import logging
 from configparser import NoOptionError
 from contextlib import contextmanager
 from gettext import gettext as _
-from pathlib import Path
 
 from PyQt5.QtCore import pyqtSlot, Qt, QThread, pyqtSignal, QObject
 from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QLineEdit, QErrorMessage, QMessageBox
+from pathlib import Path
 
 from _s3.sync import S3Sync
-from composer_core.composer.composition import CompositionBuilder, Composition
+from composer_core.composer.composition import CompositionBuilder, Composition, ExtractingZoomError
 from composer_core.config import settings
 from models.template import OutputDirError, Template, Position, Size, LayerType, Layer
 from ui.common import PRIMARY, SECONDARY, BACKGROUND, PRESENTATION, GenerationOptions
@@ -15,6 +16,9 @@ from ui.composer_graphic_scene import ComposerGraphicScene
 from ui.imagecomposer import Ui_Imagecomposer
 from ui.models import ResourceModel
 from ui.selectors import Selector
+
+
+logger = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -29,6 +33,7 @@ class ComposeWorker(QObject):
     composition_finished = pyqtSignal()
     composition_uploading_to_s3 = pyqtSignal()
     composition_uploaded_to_s3 = pyqtSignal()
+    composition_failed = pyqtSignal(str)
 
     def __init__(self,
                  compositions: [Composition],
@@ -43,11 +48,17 @@ class ComposeWorker(QObject):
         if not self._svg_output_path.exists():
             self._svg_output_path.mkdir(exist_ok=True)
 
-
     def run(self):
         for composition in self._compositions:
             if composition.is_valid():
-                path = composition.save(self._options, svg_output_path=self._svg_output_path)
+                try:
+                    path = composition.save(self._options, svg_output_path=self._svg_output_path)
+                except ExtractingZoomError:
+                    self.composition_failed.emit("Failed to generate zoom image")
+                except Exception as err:
+                    logger.exception(err)
+                    self.composition_failed.emit(err, "Something went wrong generating images for: {}")
+
                 self.composition_ready.emit(str(path))
 
         if self._options.upload_to_s3:
@@ -253,6 +264,11 @@ class Composer(QMainWindow):
 
         self.ui.include_presentation_items.clicked.connect(self.__settings_changed)
         self.ui.include_secondary_items.clicked.connect(self.__settings_changed)
+
+    @pyqtSlot(str)
+    def composition_failed(self, msg):
+        message = QErrorMessage(self)
+        message.showMessage(msg)
 
     @pyqtSlot()
     def busy_mode(self):
@@ -462,6 +478,8 @@ class Composer(QMainWindow):
         self._composition_worker.composition_uploading_to_s3.connect(self.busy_mode)
         self._composition_worker.composition_uploaded_to_s3.connect(self.normal_mode)
 
+        self._composition_worker.composition_failed.connect(self.composition_failed)
+
         self._composition_thread.started.connect(self._composition_worker.run)
 
         self._composition_thread.start()
@@ -572,9 +590,20 @@ class Composer(QMainWindow):
 if __name__ == '__main__':
     import sys
 
-    app = QApplication(sys.argv)
+    import logging
 
+    logging.basicConfig(
+        filename='composer.log',
+        level=logging.DEBUG,
+        format="====================================================================\n"
+               "%(asctime)s - %(name)s - %(levelname)s\n"
+               "====================================================================\n"
+               "%(message)s"
+    )
+
+    logging.info("Starting composer ...")
+    app = QApplication(sys.argv)
     composer = Composer()
     composer.show()
-
     app.exec()
+    logging.info("Closing composer ...")
